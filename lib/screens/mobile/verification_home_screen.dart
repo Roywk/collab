@@ -7,16 +7,23 @@ import '../../data/verification_repository.dart';
 import '../../data/qr_repository.dart';
 import '../../data/admin_repository.dart';
 import '../../data/scam_map_repository.dart';
+import '../../data/learning_repository.dart';
 import '../admin/admin_gate.dart';
 import '../../models/module_models.dart';
 import 'verification_result_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'scam_map_screen.dart';
+import 'learning/learning_home_screen.dart';
 
 class VerificationHomeScreen extends StatefulWidget {
-  const VerificationHomeScreen({required this.repository, super.key});
+  const VerificationHomeScreen({
+    required this.repository,
+    required this.learningRepository,
+    super.key,
+  });
 
   final VerificationRepository repository;
+  final LearningRepository learningRepository;
 
   @override
   State<VerificationHomeScreen> createState() {
@@ -146,11 +153,24 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
     );
   }
 
+  Future<void> openLearn() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return LearningHomeScreen(
+            repository: widget.learningRepository,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MobileShell(
       onAdmin: openAdmin,
       onMap: openScamMap,
+      onLearn: openLearn,
       currentNavigationIndex: 1,
       child: ListView(
         padding: const EdgeInsets.all(16),

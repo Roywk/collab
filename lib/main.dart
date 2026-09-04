@@ -3,13 +3,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app_theme.dart';
 import 'data/verification_repository.dart';
+import 'data/learning_repository.dart';
 import 'screens/mobile/verification_home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-
   const supabaseKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
 
   if (supabaseUrl.isEmpty || supabaseKey.isEmpty) {
@@ -32,16 +32,24 @@ Future<void> main() async {
       await client.auth.signInAnonymously();
     }
 
-    runApp(Visit1MyApp(repository: VerificationRepository(client: client)));
+    runApp(Visit1MyApp(
+      verificationRepository: VerificationRepository(client: client),
+      learningRepository: LearningRepository(client: client),
+    ));
   } catch (error) {
     runApp(StartupErrorApp(message: 'Application startup failed:\n$error'));
   }
 }
 
 class Visit1MyApp extends StatelessWidget {
-  const Visit1MyApp({required this.repository, super.key});
+  const Visit1MyApp({
+    required this.verificationRepository,
+    required this.learningRepository,
+    super.key,
+  });
 
-  final VerificationRepository repository;
+  final VerificationRepository verificationRepository;
+  final LearningRepository learningRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +57,10 @@ class Visit1MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Visit 1MY',
       theme: buildAppTheme(),
-      home: VerificationHomeScreen(repository: repository),
+      home: VerificationHomeScreen(
+        repository: verificationRepository,
+        learningRepository: learningRepository,
+      ),
     );
   }
 }

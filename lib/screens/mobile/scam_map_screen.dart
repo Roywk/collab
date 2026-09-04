@@ -11,9 +11,11 @@ import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../core/haversine.dart';
 import '../../data/scam_map_repository.dart';
+import '../../data/learning_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/location_service.dart';
 import '../../services/scam_alert_notification_service.dart';
+import 'learning/learning_home_screen.dart';
 
 class ScamMapScreen extends StatefulWidget {
   const ScamMapScreen({
@@ -236,7 +238,17 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
     return MobileShell(
       title: 'Scam Map',
       currentNavigationIndex: 0,
-      onVerify: widget.onOpenVerification ?? () => Navigator.of(context).pop(),
+      onVerify: widget.onOpenVerification ??
+          () => Navigator.of(context).popUntil((route) => route.isFirst),
+      onLearn: () {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => LearningHomeScreen(
+              repository: LearningRepository(client: widget.repository.client),
+            ),
+          ),
+        );
+      },
       gpsActive: _position != null,
       child: Column(
         children: [
