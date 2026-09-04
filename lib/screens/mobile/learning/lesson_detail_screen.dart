@@ -1,12 +1,46 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
+import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
 
-class LessonDetailScreen extends StatelessWidget {
-  const LessonDetailScreen({required this.lesson, super.key});
+class LessonDetailScreen extends StatefulWidget {
+  const LessonDetailScreen({
+    required this.lesson, 
+    required this.repository,
+    super.key,
+  });
 
   final LearningLesson lesson;
+  final LearningRepository repository;
+
+  @override
+  State<LessonDetailScreen> createState() => _LessonDetailScreenState();
+}
+
+class _LessonDetailScreenState extends State<LessonDetailScreen> {
+  bool isCompleting = false;
+
+  Future<void> _complete() async {
+    setState(() => isCompleting = true);
+    try {
+      await widget.repository.completeLesson(widget.lesson.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lesson completed! +10 XP earned.')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save progress: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isCompleting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +53,7 @@ class LessonDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Image.network(
-              'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?auto=format&fit=crop&q=80&w=800',
+              widget.lesson.imageUrl ?? 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?auto=format&fit=crop&q=80&w=800',
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -38,7 +72,7 @@ class LessonDetailScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          lesson.category,
+                          widget.lesson.category,
                           style: const TextStyle(
                             color: AppColors.red,
                             fontSize: 10,
@@ -48,14 +82,14 @@ class LessonDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        lesson.readTime,
+                        widget.lesson.readTime,
                         style: const TextStyle(color: AppColors.muted, fontSize: 10),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    lesson.title,
+                    widget.lesson.title,
                     style: const TextStyle(
                       color: AppColors.navy,
                       fontSize: 22,
@@ -72,7 +106,7 @@ class LessonDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    lesson.content,
+                    widget.lesson.content,
                     style: const TextStyle(color: AppColors.slate, fontSize: 13, height: 1.5),
                   ),
                   const SizedBox(height: 20),
@@ -95,7 +129,7 @@ class LessonDetailScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ...lesson.redFlags.map((flag) => Padding(
+                        ...widget.lesson.redFlags.map((flag) => Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,15 +157,36 @@ class LessonDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    lesson.whatToDo,
+                    widget.lesson.whatToDo,
                     style: const TextStyle(color: AppColors.slate, fontSize: 13, height: 1.5),
                   ),
                   const SizedBox(height: 32),
-                  PrimaryActionButton(
-                    label: 'Mark as Completed',
-                    icon: Icons.check_circle_outline,
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  if (!widget.lesson.isCompleted)
+                    PrimaryActionButton(
+                      label: isCompleting ? 'Saving...' : 'Mark as Completed',
+                      icon: isCompleting ? null : Icons.check_circle_outline,
+                      onPressed: isCompleting ? null : _complete,
+                    )
+                  else
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.greenSoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle, color: AppColors.green),
+                          SizedBox(width: 8),
+                          Text(
+                            'Lesson Completed',
+                            style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

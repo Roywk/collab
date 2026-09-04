@@ -21,7 +21,14 @@ class _LessonsScreenState extends State<LessonsScreen> {
   @override
   void initState() {
     super.initState();
-    lessons = widget.repository.getLessons();
+    _refreshLessons();
+  }
+
+  // 1. Helper method to centralize data fetching
+  void _refreshLessons() {
+    setState(() {
+      lessons = widget.repository.getLessons();
+    });
   }
 
   @override
@@ -74,15 +81,31 @@ class _LessonsScreenState extends State<LessonsScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
-                final items = snapshot.data ?? [];
-                
+
+                // 2. Added Error Handling
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                final allItems = snapshot.data ?? [];
+
+                // 3. Implemented Filtering logic
+                final filteredItems = allItems.where((lesson) {
+                  if (selectedFilter == 'Location-Based') return lesson.isLocationBased;
+                  if (selectedFilter == 'General') return !lesson.isLocationBased;
+                  return true; // 'All'
+                }).toList();
+
+                if (filteredItems.isEmpty) {
+                  return const Center(child: Text('No lessons found.'));
+                }
+
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: items.length,
+                  itemCount: filteredItems.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final lesson = items[index];
+                    final lesson = filteredItems[index];
                     return _buildLessonTile(context, lesson);
                   },
                 );
@@ -116,12 +139,22 @@ class _LessonsScreenState extends State<LessonsScreen> {
 
   Widget _buildLessonTile(BuildContext context, LearningLesson lesson) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LessonDetailScreen(lesson: lesson),
-        ),
-      ),
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LessonDetailScreen(
+              lesson: lesson,
+              repository: widget.repository,
+            ),
+          ),
+        );
+
+        // 4. Use the helper method here to refresh if data changed
+        if (result == true) {
+          _refreshLessons();
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: SurfaceCard(
         padding: const EdgeInsets.all(16),
@@ -144,13 +177,21 @@ class _LessonsScreenState extends State<LessonsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    lesson.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.navy,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          lesson.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                      ),
+                      if (lesson.isCompleted)
+                        const Icon(Icons.check_circle, color: AppColors.green, size: 16),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(

@@ -158,40 +158,35 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
     );
   }
 
-Future<void> openLearn() async {
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (context) {
-        return LearningHomeScreen(
-          repository: widget.learningRepository,
-        );
-      },
-    ),
-  );
-}
+  Future<void> openLearn() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return LearningHomeScreen(
+            repository: widget.learningRepository,
+          );
+        },
+      ),
+    );
+  }
 
-Future<void> openEmergencyAssistance() async {
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (context) {
-        return EmergencyDashboardScreen(
-          repository: SupabaseEmergencyRepository(
-            client: widget.repository.client,
-          ),
-          incidentReportRepository: SupabaseIncidentReportRepository(
-            client: widget.repository.client,
-          ),
-          helpNearbyRepository: SupabaseHelpNearbyRepository(
-            client: widget.repository.client,
-          ),
-          sosRepository: SupabaseSosRepository(
-            client: widget.repository.client,
-          ),
-        );
-      },
-    ),
-  );
-}
+  Future<void> openEmergencyAssistance() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return EmergencyDashboardScreen(
+            repository: SupabaseEmergencyRepository(
+              client: widget.repository.client,
+            ),
+            incidentReportRepository: SupabaseIncidentReportRepository(
+              client: widget.repository.client,
+            ),
+            helpNearbyRepository: SupabaseHelpNearbyRepository(
+              client: widget.repository.client,
+            ),
+            sosRepository: SupabaseSosRepository(
+              client: widget.repository.client,
+            ),
           );
         },
       ),
@@ -203,8 +198,8 @@ Future<void> openEmergencyAssistance() async {
     return MobileShell(
       onAdmin: openAdmin,
       onMap: openScamMap,
-onLearn: openLearn,
-onEmergency: openEmergencyAssistance,
+      onLearn: openLearn,
+      onEmergency: openEmergencyAssistance,
       currentNavigationIndex: 1,
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -241,7 +236,7 @@ onEmergency: openEmergencyAssistance,
                     )
                   : IconButton(
                       tooltip: 'Search',
-                      onPressed: searchBusiness,
+                      onPressed: () => searchBusiness(),
                       icon: const Icon(Icons.arrow_forward_rounded, size: 19),
                     ),
             ),
