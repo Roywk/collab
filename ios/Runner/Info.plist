@@ -9,7 +9,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>Visit 1MY</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Visit 1MY uses your location to show nearby scam reports and warn you when you approach a verified hotspot.</string>
+	<string>Visit 1MY uses your location to show nearby emergency facilities and scam alerts.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Visit 1MY uses location updates while the scam map is active to provide proximity safety alerts.</string>
 	<key>CFBundleExecutable</key>

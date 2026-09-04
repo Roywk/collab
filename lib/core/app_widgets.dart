@@ -18,6 +18,9 @@ class MobileShell extends StatelessWidget {
     this.gpsActive,
     this.showBottomNavigation = true,
     this.darkBackground = false,
+    this.statusLabel,
+    this.titleColor = AppColors.blue,
+    this.emergencyNavigation = false,
     super.key,
   });
 
@@ -34,6 +37,9 @@ class MobileShell extends StatelessWidget {
   final bool? gpsActive;
   final bool showBottomNavigation;
   final bool darkBackground;
+  final String? statusLabel;
+  final Color titleColor;
+  final bool emergencyNavigation;
 
   @override
   Widget build(BuildContext context) {
@@ -73,18 +79,25 @@ class MobileShell extends StatelessWidget {
               ),
               const SizedBox(width: 8),
             ],
-            Text(
-              title ?? 'Visit 1MY',
-              style: const TextStyle(
-                color: AppColors.blue,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+            Expanded(
+              child: FittedBox(
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title ?? 'Visit 1MY',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          GpsStatusBadge(isActive: gpsActive),
+          GpsStatusBadge(isActive: gpsActive, label: statusLabel),
           PopupMenuButton<String>(
             tooltip: 'Notifications',
             icon: const Icon(
@@ -134,6 +147,7 @@ class MobileShell extends StatelessWidget {
               onReport: onReport,
               onEmergency: onEmergency,
               onLearn: onLearn,
+              emergencyMode: emergencyNavigation,
             )
           : null,
     );
@@ -141,9 +155,10 @@ class MobileShell extends StatelessWidget {
 }
 
 class GpsStatusBadge extends StatelessWidget {
-  const GpsStatusBadge({this.isActive, super.key});
+  const GpsStatusBadge({this.isActive, this.label, super.key});
 
   final bool? isActive;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +179,7 @@ class GpsStatusBadge extends StatelessWidget {
           ),
           SizedBox(width: 5),
           Text(
-            isActive == false ? 'GPS Paused' : 'GPS Active',
+            label ?? (isActive == false ? 'GPS Paused' : 'GPS Active'),
             style: TextStyle(
               color: isActive == false ? AppColors.amber : AppColors.green,
               fontSize: 10,
@@ -185,6 +200,7 @@ class VisitBottomNavigation extends StatelessWidget {
     this.onReport,
     this.onEmergency,
     this.onLearn,
+    this.emergencyMode = false,
     super.key,
   });
 
@@ -194,11 +210,14 @@ class VisitBottomNavigation extends StatelessWidget {
   final VoidCallback? onReport;
   final VoidCallback? onEmergency;
   final VoidCallback? onLearn;
+  final bool emergencyMode;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (Icons.map_outlined, 'Map'),
+    final items = [
+      emergencyMode
+          ? (Icons.home_outlined, 'Home')
+          : (Icons.map_outlined, 'Map'),
       (Icons.verified_user_outlined, 'Verify'),
       (Icons.add_circle_outline, 'Report'),
       (Icons.phone_outlined, 'Emergency'),

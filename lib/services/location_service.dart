@@ -12,6 +12,12 @@ class LocationUnavailableException implements Exception {
 }
 
 class LocationService {
+  Future<bool> hasLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
   Future<LocationPermission> ensurePermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw const LocationUnavailableException(
@@ -27,7 +33,7 @@ class LocationService {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       throw const LocationUnavailableException(
-        'Location permission is required for nearby scam alerts.',
+        'Location permission is required to find nearby safety services.',
       );
     }
 

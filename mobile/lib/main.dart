@@ -5,23 +5,20 @@ void main() {
 }
 
 class CollabApp extends StatelessWidget {
-  const CollabApp({Key? key}) : super(key: key);
+  const CollabApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Collab - Travel Together',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -39,9 +36,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Collab - Collaborative Travel App'),
-      ),
+      appBar: AppBar(title: const Text('Collab - Collaborative Travel App')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -56,10 +51,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 40),
-            Text(
-              'Counter: $_counter',
-              style: const TextStyle(fontSize: 18),
-            ),
+            Text('Counter: $_counter', style: const TextStyle(fontSize: 18)),
           ],
         ),
       ),
