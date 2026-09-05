@@ -152,6 +152,7 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
         builder: (context) {
           return ScamMapScreen(
             repository: ScamMapRepository(client: widget.repository.client),
+            onOpenVerification: () => Navigator.of(context).pop(),
           );
         },
       ),
@@ -200,7 +201,7 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
       onMap: openScamMap,
       onLearn: openLearn,
       onEmergency: openEmergencyAssistance,
-      currentNavigationIndex: 1,
+      currentNavigationIndex: 2,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [

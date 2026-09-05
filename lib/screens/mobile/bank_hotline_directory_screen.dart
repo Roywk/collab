@@ -62,10 +62,8 @@ class _BankHotlineDirectoryScreenState
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
       onBack: () => Navigator.of(context).pop(),
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
-      onMap: () => Navigator.of(context).pop(),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: Column(
         children: [
           Padding(

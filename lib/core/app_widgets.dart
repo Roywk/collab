@@ -9,12 +9,14 @@ class MobileShell extends StatelessWidget {
     this.title,
     this.onBack,
     this.onAdmin,
+    this.onHome,
     this.onMap,
     this.onVerify,
     this.onReport,
     this.onEmergency,
     this.onLearn,
-    this.currentNavigationIndex = 1,
+    this.onProfile,
+    this.currentNavigationIndex = 2,
     this.gpsActive,
     this.showBottomNavigation = true,
     this.darkBackground = false,
@@ -28,11 +30,13 @@ class MobileShell extends StatelessWidget {
   final String? title;
   final VoidCallback? onBack;
   final VoidCallback? onAdmin;
+  final VoidCallback? onHome;
   final VoidCallback? onMap;
   final VoidCallback? onVerify;
   final VoidCallback? onReport;
   final VoidCallback? onEmergency;
   final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
   final int currentNavigationIndex;
   final bool? gpsActive;
   final bool showBottomNavigation;
@@ -142,11 +146,13 @@ class MobileShell extends StatelessWidget {
       bottomNavigationBar: showBottomNavigation
           ? VisitBottomNavigation(
               currentIndex: currentNavigationIndex,
+              onHome: onHome,
               onMap: onMap,
               onVerify: onVerify,
               onReport: onReport,
               onEmergency: onEmergency,
               onLearn: onLearn,
+              onProfile: onProfile,
               emergencyMode: emergencyNavigation,
             )
           : null,
@@ -194,37 +200,60 @@ class GpsStatusBadge extends StatelessWidget {
 
 class VisitBottomNavigation extends StatelessWidget {
   const VisitBottomNavigation({
-    this.currentIndex = 1,
+    this.currentIndex = 2,
+    this.onHome,
     this.onMap,
     this.onVerify,
     this.onReport,
     this.onEmergency,
     this.onLearn,
+    this.onProfile,
     this.emergencyMode = false,
     super.key,
   });
 
   final int currentIndex;
+  final VoidCallback? onHome;
   final VoidCallback? onMap;
   final VoidCallback? onVerify;
   final VoidCallback? onReport;
   final VoidCallback? onEmergency;
   final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
   final bool emergencyMode;
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      emergencyMode
-          ? (Icons.home_outlined, 'Home')
-          : (Icons.map_outlined, 'Map'),
+      (Icons.home_outlined, 'Home'),
+      (Icons.map_outlined, 'Map'),
       (Icons.verified_user_outlined, 'Verify'),
       (Icons.add_circle_outline, 'Report'),
       (Icons.phone_outlined, 'Emergency'),
       (Icons.menu_book_outlined, 'Learn'),
+      (Icons.person_outline_rounded, 'Profile'),
     ];
 
-    final callbacks = [onMap, onVerify, onReport, onEmergency, onLearn];
+    final callbacks = [
+      onHome ?? () => Navigator.of(context).popUntil((route) => route.isFirst),
+      onMap ??
+          () {
+            if (currentIndex != 1) Navigator.of(context).pushNamed('/map');
+          },
+      onVerify ??
+          () {
+            if (currentIndex != 2) Navigator.of(context).pushNamed('/verify');
+          },
+      onReport,
+      onEmergency ??
+          () {
+            if (currentIndex != 4) {
+              Navigator.of(context).pushNamed('/emergency');
+            }
+          },
+      onLearn,
+      onProfile ?? () => Navigator.of(context).pushNamed('/profile'),
+    ];
 
     return SafeArea(
       top: false,
@@ -246,43 +275,45 @@ class VisitBottomNavigation extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (int index = 0; index < items.length; index++)
-              InkWell(
-                onTap: callbacks[index],
-                child: SizedBox(
-                  width: 64,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (index == currentIndex)
-                        Container(
-                          width: 30,
-                          height: 2,
-                          margin: const EdgeInsets.only(bottom: 5),
-                          color: AppColors.blue,
-                        )
-                      else
-                        const SizedBox(height: 7),
-                      Icon(
-                        items[index].$1,
-                        size: 21,
-                        color: index == currentIndex
-                            ? AppColors.blue
-                            : AppColors.slate,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[index].$2,
-                        style: TextStyle(
+              Expanded(
+                child: InkWell(
+                  onTap: callbacks[index],
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (index == currentIndex)
+                          Container(
+                            width: 30,
+                            height: 2,
+                            margin: const EdgeInsets.only(bottom: 5),
+                            color: AppColors.blue,
+                          )
+                        else
+                          const SizedBox(height: 7),
+                        Icon(
+                          items[index].$1,
+                          size: 21,
                           color: index == currentIndex
                               ? AppColors.blue
                               : AppColors.slate,
-                          fontSize: 9,
-                          fontWeight: index == currentIndex
-                              ? FontWeight.w700
-                              : FontWeight.w600,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Text(
+                          items[index].$2,
+                          style: TextStyle(
+                            color: index == currentIndex
+                                ? AppColors.blue
+                                : AppColors.slate,
+                            fontSize: 9,
+                            fontWeight: index == currentIndex
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

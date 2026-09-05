@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
@@ -31,6 +32,7 @@ class _HelpNearbyPermissionScreenState extends State<HelpNearbyPermissionScreen>
   bool _checking = true;
   bool _routing = false;
   String? _message;
+  LocationAccessStatus? _accessStatus;
 
   @override
   void initState() {
@@ -54,12 +56,25 @@ class _HelpNearbyPermissionScreenState extends State<HelpNearbyPermissionScreen>
 
   Future<void> _checkExistingPermission() async {
     try {
-      final granted = await _locationService.hasLocationPermission();
+      final status = await _locationService.accessStatus();
       if (!mounted) return;
-      if (granted) {
+      if (status == LocationAccessStatus.granted) {
         await _openFacilities();
       } else {
-        setState(() => _checking = false);
+        setState(() {
+          _accessStatus = status;
+          _checking = false;
+          _message = switch (status) {
+            LocationAccessStatus.serviceDisabled =>
+              'Your device location service is turned off.',
+            LocationAccessStatus.deniedForever =>
+              kIsWeb
+                  ? 'Location is blocked for this website. Use the site '
+                        'controls beside the address bar to allow it.'
+                  : 'Location permission is blocked. Enable it in app settings.',
+            _ => null,
+          };
+        });
       }
     } catch (error) {
       if (!mounted) return;
@@ -68,6 +83,20 @@ class _HelpNearbyPermissionScreenState extends State<HelpNearbyPermissionScreen>
         _message = error.toString();
       });
     }
+  }
+
+  Future<void> _handleLocationAction() async {
+    if (_accessStatus == LocationAccessStatus.serviceDisabled) {
+      if (!kIsWeb) await _locationService.openLocationSettings();
+      if (kIsWeb) await _checkExistingPermission();
+      return;
+    }
+    if (_accessStatus == LocationAccessStatus.deniedForever) {
+      if (!kIsWeb) await _locationService.openAppSettings();
+      if (kIsWeb) await _checkExistingPermission();
+      return;
+    }
+    await _openFacilities();
   }
 
   Future<void> _openFacilities() async {
@@ -105,11 +134,9 @@ class _HelpNearbyPermissionScreenState extends State<HelpNearbyPermissionScreen>
       title: 'Help Nearby',
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
       onBack: () => Navigator.of(context).pop(),
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: _checking
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : ListView(
@@ -176,20 +203,25 @@ class _HelpNearbyPermissionScreenState extends State<HelpNearbyPermissionScreen>
                       ],
                       const SizedBox(height: 20),
                       PrimaryActionButton(
-                        label: 'Allow Location Access',
-                        onPressed: _openFacilities,
+                        label:
+                            _accessStatus ==
+                                LocationAccessStatus.serviceDisabled
+                            ? kIsWeb
+                                  ? 'Check Location Again'
+                                  : 'Open Location Settings'
+                            : _accessStatus ==
+                                  LocationAccessStatus.deniedForever
+                            ? kIsWeb
+                                  ? 'Check Permission Again'
+                                  : 'Open App Settings'
+                            : 'Allow Location Access',
+                        onPressed: _handleLocationAction,
                       ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
                         child: const Text('Not Now'),
                       ),
-                      if (_message != null)
-                        TextButton.icon(
-                          onPressed: _locationService.openAppSettings,
-                          icon: const Icon(Icons.settings_outlined, size: 17),
-                          label: const Text('Open App Settings'),
-                        ),
                       const Divider(height: 30),
                       const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

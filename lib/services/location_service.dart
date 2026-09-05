@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+
+enum LocationAccessStatus { granted, serviceDisabled, denied, deniedForever }
 
 class LocationUnavailableException implements Exception {
   const LocationUnavailableException(this.message);
@@ -12,10 +15,22 @@ class LocationUnavailableException implements Exception {
 }
 
 class LocationService {
-  Future<bool> hasLocationPermission() async {
+  Future<LocationAccessStatus> accessStatus() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      return LocationAccessStatus.serviceDisabled;
+    }
+
     final permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+    return switch (permission) {
+      LocationPermission.always ||
+      LocationPermission.whileInUse => LocationAccessStatus.granted,
+      LocationPermission.deniedForever => LocationAccessStatus.deniedForever,
+      _ => LocationAccessStatus.denied,
+    };
+  }
+
+  Future<bool> hasLocationPermission() async {
+    return await accessStatus() == LocationAccessStatus.granted;
   }
 
   Future<LocationPermission> ensurePermission() async {
@@ -60,7 +75,13 @@ class LocationService {
     );
   }
 
-  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+  Future<bool> openLocationSettings() async {
+    if (kIsWeb) return false;
+    return Geolocator.openLocationSettings();
+  }
 
-  Future<bool> openAppSettings() => Geolocator.openAppSettings();
+  Future<bool> openAppSettings() async {
+    if (kIsWeb) return false;
+    return Geolocator.openAppSettings();
+  }
 }

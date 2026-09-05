@@ -237,9 +237,10 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
   Widget build(BuildContext context) {
     return MobileShell(
       title: 'Scam Map',
-      currentNavigationIndex: 0,
-      onVerify: widget.onOpenVerification ??
-          () => Navigator.of(context).popUntil((route) => route.isFirst),
+      currentNavigationIndex: 1,
+      onVerify:
+          widget.onOpenVerification ??
+          () => Navigator.of(context).pushNamed('/verify'),
       onLearn: () {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(

@@ -66,10 +66,8 @@ class _BankHotlineDetailScreenState extends State<BankHotlineDetailScreen> {
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
       onBack: () => Navigator.of(context).pop(),
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [

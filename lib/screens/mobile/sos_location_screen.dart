@@ -147,11 +147,9 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
       title: 'Share My Location',
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
       onBack: () => Navigator.of(context).pop(),
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : _error != null || _contact == null || _position == null
@@ -547,10 +545,8 @@ class SosShareOpenedScreen extends StatelessWidget {
         : 'SMS';
     return MobileShell(
       statusLabel: 'KL: Active',
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 26, 18, 24),
         children: [
