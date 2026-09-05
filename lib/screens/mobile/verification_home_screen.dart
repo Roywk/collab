@@ -7,11 +7,16 @@ import '../../data/verification_repository.dart';
 import '../../data/qr_repository.dart';
 import '../../data/admin_repository.dart';
 import '../../data/scam_map_repository.dart';
+import '../../data/emergency_repository.dart';
+import '../../data/help_nearby_repository.dart';
+import '../../data/incident_report_repository.dart';
+import '../../data/sos_repository.dart';
 import '../admin/admin_gate.dart';
 import '../../models/module_models.dart';
 import 'verification_result_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'scam_map_screen.dart';
+import 'emergency_dashboard_screen.dart';
 
 class VerificationHomeScreen extends StatefulWidget {
   const VerificationHomeScreen({required this.repository, super.key});
@@ -140,6 +145,30 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
         builder: (context) {
           return ScamMapScreen(
             repository: ScamMapRepository(client: widget.repository.client),
+            onOpenVerification: () => Navigator.of(context).pop(),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> openEmergencyAssistance() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return EmergencyDashboardScreen(
+            repository: SupabaseEmergencyRepository(
+              client: widget.repository.client,
+            ),
+            incidentReportRepository: SupabaseIncidentReportRepository(
+              client: widget.repository.client,
+            ),
+            helpNearbyRepository: SupabaseHelpNearbyRepository(
+              client: widget.repository.client,
+            ),
+            sosRepository: SupabaseSosRepository(
+              client: widget.repository.client,
+            ),
           );
         },
       ),
@@ -151,7 +180,8 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
     return MobileShell(
       onAdmin: openAdmin,
       onMap: openScamMap,
-      currentNavigationIndex: 1,
+      onEmergency: openEmergencyAssistance,
+      currentNavigationIndex: 2,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [

@@ -9,10 +9,14 @@ class AdminShell extends StatelessWidget {
     this.onSignOut,
     this.searchController,
     this.onSearchChanged,
-    this.selectedMenuItem = 'Threat Database',
+    this.selectedMenuItem = 'Scam Moderation',
     this.onOpenHeatmap,
     this.onPublishScamCase,
     this.onOpenThreatDatabase,
+    this.onOpenBankHotlines,
+    this.onOpenEmergencyFacilities,
+    this.headerTitle = 'Scam & Threat Database',
+    this.showTopBar = true,
     super.key,
   });
 
@@ -25,6 +29,10 @@ class AdminShell extends StatelessWidget {
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onPublishScamCase;
   final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenBankHotlines;
+  final VoidCallback? onOpenEmergencyFacilities;
+  final String headerTitle;
+  final bool showTopBar;
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +59,12 @@ class AdminShell extends StatelessWidget {
                         );
                       },
                     ),
-              title: const Text(
-                'Scam & Threat Database',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              title: Text(
+                headerTitle,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               actions: const [
                 Padding(
@@ -71,6 +82,8 @@ class AdminShell extends StatelessWidget {
                         onOpenHeatmap: onOpenHeatmap,
                         onPublishScamCase: onPublishScamCase,
                         onOpenThreatDatabase: onOpenThreatDatabase,
+                        onOpenBankHotlines: onOpenBankHotlines,
+                        onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                       ),
                     ),
                   )
@@ -91,68 +104,76 @@ class AdminShell extends StatelessWidget {
                   onOpenHeatmap: onOpenHeatmap,
                   onPublishScamCase: onPublishScamCase,
                   onOpenThreatDatabase: onOpenThreatDatabase,
+                  onOpenBankHotlines: onOpenBankHotlines,
+                  onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                 ),
               ),
               Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      height: 72,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        border: Border(
-                          bottom: BorderSide(color: AppColors.line),
-                        ),
-                      ),
-                      child: Row(
+                child: showTopBar
+                    ? Column(
                         children: [
-                          if (onBack != null) ...[
-                            IconButton(
-                              onPressed: onBack,
-                              icon: const Icon(Icons.chevron_left),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                          const Expanded(
-                            child: Text(
-                              'Scam & Threat Database',
-                              style: TextStyle(
-                                color: AppColors.navy,
-                                fontSize: 21,
-                                fontWeight: FontWeight.w800,
+                          Container(
+                            height: 72,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              border: Border(
+                                bottom: BorderSide(color: AppColors.line),
                               ),
                             ),
-                          ),
-                          if (searchController != null)
-                            SizedBox(
-                              width: 300,
-                              height: 40,
-                              child: TextField(
-                                controller: searchController,
-                                onChanged: onSearchChanged,
-                                decoration: const InputDecoration(
-                                  hintText: 'Search record, phone or URL...',
-                                  prefixIcon: Icon(Icons.search, size: 18),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    vertical: 8,
+                            child: Row(
+                              children: [
+                                if (onBack != null) ...[
+                                  IconButton(
+                                    onPressed: onBack,
+                                    icon: const Icon(Icons.chevron_left),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    headerTitle,
+                                    style: const TextStyle(
+                                      color: AppColors.navy,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
-                              ),
+                                if (searchController != null)
+                                  SizedBox(
+                                    width: 300,
+                                    height: 40,
+                                    child: TextField(
+                                      controller: searchController,
+                                      onChanged: onSearchChanged,
+                                      decoration: const InputDecoration(
+                                        hintText:
+                                            'Search record, phone or URL...',
+                                        prefixIcon: Icon(
+                                          Icons.search,
+                                          size: 18,
+                                        ),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 16),
+                                const AdminLiveBadge(),
+                                const SizedBox(width: 14),
+                                const Icon(
+                                  Icons.notifications_none_rounded,
+                                  size: 22,
+                                ),
+                              ],
                             ),
-                          const SizedBox(width: 16),
-                          const AdminLiveBadge(),
-                          const SizedBox(width: 14),
-                          const Icon(
-                            Icons.notifications_none_rounded,
-                            size: 22,
                           ),
+                          Expanded(child: child),
                         ],
-                      ),
-                    ),
-                    Expanded(child: child),
-                  ],
-                ),
+                      )
+                    : child,
               ),
             ],
           ),
@@ -195,10 +216,12 @@ class AdminLiveBadge extends StatelessWidget {
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({
     this.onSignOut,
-    this.selectedMenuItem = 'Threat Database',
+    this.selectedMenuItem = 'Scam Moderation',
     this.onOpenHeatmap,
     this.onPublishScamCase,
     this.onOpenThreatDatabase,
+    this.onOpenBankHotlines,
+    this.onOpenEmergencyFacilities,
     super.key,
   });
 
@@ -207,18 +230,20 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onPublishScamCase;
   final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenBankHotlines;
+  final VoidCallback? onOpenEmergencyFacilities;
 
   @override
   Widget build(BuildContext context) {
     const menuItems = [
       (Icons.dashboard_outlined, 'Dashboard Overview'),
-      (Icons.description_outlined, 'Reports'),
+      (Icons.flag_outlined, 'Scam Moderation'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
-      (Icons.add_location_alt_outlined, 'Publish Scam Case'),
       (Icons.verified_outlined, 'Verified Merchants'),
-      (Icons.shield_outlined, 'Threat Database'),
+      (Icons.phone_outlined, 'Bank Hotline Mgmt'),
+      (Icons.location_on_outlined, 'Emergency Facilities'),
       (Icons.menu_book_outlined, 'Awareness CMS'),
-      (Icons.settings_outlined, 'System Settings'),
+      (Icons.settings_outlined, 'System Logs & Settings'),
     ];
 
     return Container(
@@ -281,11 +306,14 @@ class AdminSidebar extends StatelessWidget {
                       case 'Geospatial Heatmap':
                         onOpenHeatmap?.call();
                         break;
-                      case 'Publish Scam Case':
-                        onPublishScamCase?.call();
-                        break;
-                      case 'Threat Database':
+                      case 'Scam Moderation':
                         onOpenThreatDatabase?.call();
+                        break;
+                      case 'Bank Hotline Mgmt':
+                        onOpenBankHotlines?.call();
+                        break;
+                      case 'Emergency Facilities':
+                        onOpenEmergencyFacilities?.call();
                         break;
                     }
                   },
