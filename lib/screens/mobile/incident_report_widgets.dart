@@ -23,10 +23,8 @@ class IncidentReportShell extends StatelessWidget {
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
       onBack: onBack,
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: child,
     );
   }

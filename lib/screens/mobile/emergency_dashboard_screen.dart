@@ -7,6 +7,7 @@ import '../../data/help_nearby_repository.dart';
 import '../../data/incident_report_repository.dart';
 import '../../data/sos_repository.dart';
 import 'bank_hotline_directory_screen.dart';
+import 'emergency_location_gate.dart';
 import 'help_nearby_permission_screen.dart';
 import 'incident_report_form_screen.dart';
 import 'sos_location_screen.dart';
@@ -28,10 +29,9 @@ class EmergencyDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MobileShell(
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
       statusLabel: 'KL: Active',
-      onVerify: () => Navigator.of(context).pop(),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -68,8 +68,14 @@ class EmergencyDashboardScreen extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => IncidentReportFormScreen(
-                    repository: incidentReportRepository,
+                  builder: (_) => EmergencyLocationGate(
+                    title: 'Incident Report Generator',
+                    description:
+                        'Location permission is required to confirm where the '
+                        'incident occurred and assist local authorities.',
+                    child: IncidentReportFormScreen(
+                      repository: incidentReportRepository,
+                    ),
                   ),
                 ),
               );
@@ -98,7 +104,13 @@ class EmergencyDashboardScreen extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => SosLocationScreen(repository: sosRepository),
+                  builder: (_) => EmergencyLocationGate(
+                    title: 'Share My Location',
+                    description:
+                        'Allow location access so your live position can be '
+                        'included in the emergency message.',
+                    child: SosLocationScreen(repository: sosRepository),
+                  ),
                 ),
               );
             },

@@ -57,11 +57,9 @@ class HelpNearbyDetailScreen extends StatelessWidget {
       title: 'Facility Details',
       titleColor: AppColors.navy,
       statusLabel: 'KL: Active',
-      currentNavigationIndex: 3,
+      currentNavigationIndex: 4,
       emergencyNavigation: true,
       onBack: () => Navigator.of(context).pop(),
-      onMap: () => Navigator.of(context).popUntil((route) => route.isFirst),
-      onVerify: () => Navigator.of(context).popUntil((route) => route.isFirst),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [

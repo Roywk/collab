@@ -122,7 +122,7 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Publish Scam Case',
+      selectedMenuItem: 'Scam Moderation',
       onBack: () => Navigator.of(context).pop(),
       onOpenThreatDatabase: () => Navigator.of(context).pop(),
       child: SingleChildScrollView(

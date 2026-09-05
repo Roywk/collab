@@ -15,15 +15,19 @@ class AdminRepository {
       return false;
     }
 
+    return await _adminAccountStatus(user.id) == true;
+  }
+
+  Future<bool?> _adminAccountStatus(String userId) async {
     final response = await client
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
+        .from('admin_accounts')
+        .select('is_active')
+        .eq('id', userId)
         .limit(1);
 
     final rows = response as List;
-
-    return rows.isNotEmpty && rows.first['role']?.toString() == 'admin';
+    if (rows.isEmpty) return null;
+    return rows.first['is_active'] == true;
   }
 
   Future<void> signInAdmin({
@@ -40,17 +44,23 @@ class AdminRepository {
         password: password,
       );
 
-      final isAdmin = await hasAdminSession();
+      final user = client.auth.currentUser;
+      final adminStatus = user == null
+          ? null
+          : await _adminAccountStatus(user.id);
 
-      if (!isAdmin) {
-        throw const AuthException('This account does not have the admin role.');
+      if (adminStatus == null) {
+        throw const AuthException(
+          'User accounts cannot sign in here. Use the User Login page.',
+        );
+      }
+      if (!adminStatus) {
+        throw const AuthException('This administrator account is disabled.');
       }
     } catch (error) {
       if (client.auth.currentSession != null) {
         await client.auth.signOut();
       }
-
-      await client.auth.signInAnonymously();
       rethrow;
     }
   }
@@ -59,8 +69,6 @@ class AdminRepository {
     if (client.auth.currentSession != null) {
       await client.auth.signOut();
     }
-
-    await client.auth.signInAnonymously();
   }
 
   Future<List<ThreatRecord>> getThreatRecords() async {
