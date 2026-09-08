@@ -101,12 +101,31 @@ data used by Bank Hotline and Share My Location / SOS:
 3. `supabase/migrations/202609050000_auth_profiles.sql`
 4. `supabase/migrations/202609050003_multi_bank_registration.sql`
 
+For development/demo data, run
+`supabase/migrations/202609090001_seed_profile_banks_facilities.sql` after the
+four migrations above. It enriches existing tourist profiles, adds bank and
+emergency-facility directory records, and creates matching `user_banks` and
+`emergency_contacts` rows. It does not create fake rows in `auth.users`;
+additional login-capable users must first be created through Supabase Auth.
+
+If the development seed previously stopped before inserting emergency contacts,
+run `supabase/migrations/202609090002_repair_profile_contacts.sql`. It creates
+only missing primary contacts, synchronizes profile emails from Auth, and
+returns a `login_status` for every tourist profile. Never add a plaintext
+password column to `profiles`.
+
 In **Supabase Dashboard > Authentication > Providers**, keep the Email provider
 enabled. The mobile registration form creates the Supabase Auth account and the
 database trigger creates its `profiles` row, one `user_banks` link for every
 selected bank, and its primary `emergency_contacts` row. The first selected
 bank is marked as primary. Passwords remain in Supabase Auth and are never
 stored in a public database table.
+
+For linked demonstration data, create or register a tourist Auth account, edit
+both marked email values in `supabase/seed_linked_demo_data.sql`, then run the
+whole file in the SQL Editor. It upserts the matching profile, two linked bank
+records, one primary emergency contact, and the shared Help Nearby facilities.
+The script is idempotent and can be run again for the same user.
 
 The mobile footer includes **Profile** after **Learn**. The profile page lets a
 signed-in user update their personal details, preferred language, primary bank,

@@ -3,13 +3,20 @@ import 'package:intl/intl.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
+import '../../data/incident_report_repository.dart';
 import '../../data/user_account_repository.dart';
 import '../../models/user_profile.dart';
+import 'translated_report_history_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({required this.repository, super.key});
+  const UserProfileScreen({
+    required this.repository,
+    required this.incidentReportRepository,
+    super.key,
+  });
 
   final UserAccountRepository repository;
+  final IncidentReportHistoryRepository incidentReportRepository;
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -138,6 +145,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _controllersLoaded = false;
       _profileFuture = widget.repository.getProfile();
     });
+  }
+
+  void _openTranslatedReportRecords() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TranslatedReportHistoryScreen(
+          repository: widget.incidentReportRepository,
+        ),
+      ),
+    );
   }
 
   @override
@@ -406,6 +423,54 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const SizedBox(height: 14),
                 SurfaceCard(
+                  padding: EdgeInsets.zero,
+                  child: InkWell(
+                    onTap: _openTranslatedReportRecords,
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          _ProfileActionIcon(
+                            icon: Icons.translate_rounded,
+                            color: AppColors.blue,
+                            backgroundColor: AppColors.blueSoft,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Translate Report Record',
+                                  style: TextStyle(
+                                    color: AppColors.navy,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'View your past translated incident reports',
+                                  style: TextStyle(
+                                    color: AppColors.slate,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.muted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SurfaceCard(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,6 +520,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _ProfileActionIcon extends StatelessWidget {
+  const _ProfileActionIcon({
+    required this.icon,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: color, size: 22),
     );
   }
 }
