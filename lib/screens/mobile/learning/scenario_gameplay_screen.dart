@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
+import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
 
 class ScenarioGameplayScreen extends StatefulWidget {
-  const ScenarioGameplayScreen({required this.scenario, super.key});
+  const ScenarioGameplayScreen({
+    required this.scenario,
+    required this.repository,
+    super.key,
+  });
 
   final Scenario scenario;
+  final LearningRepository repository;
 
   @override
   State<ScenarioGameplayScreen> createState() => _ScenarioGameplayScreenState();
@@ -41,7 +47,11 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
     }
   }
 
-  void _showCompletion() {
+  Future<void> _showCompletion() async {
+    final earnedXp = await widget.repository.completeScenario(
+      widget.scenario.id,
+    );
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -59,7 +69,11 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
             const SizedBox(height: 16),
             const Text(
               'Scenario Complete!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.navy),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -69,28 +83,41 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '+${widget.scenario.xpReward} XP EARNED!',
-                style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w800, fontSize: 12),
+                earnedXp
+                    ? '+${widget.scenario.xpReward} XP EARNED!'
+                    : 'SCENARIO ALREADY COMPLETED',
+                style: const TextStyle(
+                  color: AppColors.green,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
               ),
             ),
             const SizedBox(height: 24),
             SurfaceCard(
-              color: AppColors.blueSoft.withOpacity(0.3),
-              child: const Column(
+              color: AppColors.blueSoft.withValues(alpha: 0.3),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('EXPLANATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.blue)),
-                  SizedBox(height: 8),
+                  const Text(
+                    'EXPLANATION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    'You chose correctly! Always verify with official sources. Batu Caves is free to enter without a guide. Non-official guides can occasionally overcharge or mislead you about entry policies.',
-                    style: TextStyle(fontSize: 13, color: AppColors.navy),
+                    selectedOption?.feedback ?? widget.scenario.description,
+                    style: const TextStyle(fontSize: 13, color: AppColors.navy),
                   ),
                 ],
               ),
             ),
             const Spacer(),
             PrimaryActionButton(
-              label: 'Next Scenario',
+              label: 'Back to Scenarios',
               onPressed: () {
                 Navigator.pop(context); // Close modal
                 Navigator.pop(context); // Back to selection
@@ -99,7 +126,13 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Back to Scenarios', style: TextStyle(color: AppColors.blue, fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Review my final choice',
+                style: TextStyle(
+                  color: AppColors.blue,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -112,9 +145,10 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
     final step = widget.scenario.steps[currentStepIndex];
 
     return MobileShell(
-      title: 'Scenario ${currentStepIndex + 1} of ${widget.scenario.steps.length}',
+      title:
+          'Scenario ${currentStepIndex + 1} of ${widget.scenario.steps.length}',
       onBack: () => Navigator.pop(context),
-      currentNavigationIndex: 4,
+      currentNavigationIndex: 5,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -122,23 +156,43 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
           children: [
             const Text(
               'ACTIVE SIMULATION',
-              style: TextStyle(color: AppColors.blue, fontSize: 10, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: AppColors.blue,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             Text(
               widget.scenario.title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.navy),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
             ),
             const SizedBox(height: 20),
             SurfaceCard(
-              color: AppColors.blueSoft.withOpacity(0.2),
+              color: AppColors.blueSoft.withValues(alpha: 0.2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('THE SITUATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.blue)),
+                  const Text(
+                    'THE SITUATION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.blue,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     step.situation,
-                    style: const TextStyle(fontSize: 14, color: AppColors.navy, fontWeight: FontWeight.w600, height: 1.5),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.navy,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -149,7 +203,9 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
-                  onTap: showFeedback ? null : () => setState(() => selectedOption = option),
+                  onTap: showFeedback
+                      ? null
+                      : () => setState(() => selectedOption = option),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -168,17 +224,32 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                           height: 20,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: isSelected ? AppColors.blue : AppColors.slate),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.blue
+                                  : AppColors.slate,
+                            ),
                           ),
-                          child: isSelected ? const Center(child: CircleAvatar(radius: 5, backgroundColor: AppColors.blue)) : null,
+                          child: isSelected
+                              ? const Center(
+                                  child: CircleAvatar(
+                                    radius: 5,
+                                    backgroundColor: AppColors.blue,
+                                  ),
+                                )
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             option.text,
                             style: TextStyle(
-                              color: isSelected ? AppColors.blue : AppColors.navy,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? AppColors.blue
+                                  : AppColors.navy,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                         ),
@@ -191,17 +262,30 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
             const Spacer(),
             if (showFeedback)
               SurfaceCard(
-                color: selectedOption!.isCorrect ? AppColors.greenSoft : AppColors.redSoft,
-                borderColor: selectedOption!.isCorrect ? AppColors.green : AppColors.red,
+                color: selectedOption!.isCorrect
+                    ? AppColors.greenSoft
+                    : AppColors.redSoft,
+                borderColor: selectedOption!.isCorrect
+                    ? AppColors.green
+                    : AppColors.red,
                 child: Row(
                   children: [
-                    Icon(selectedOption!.isCorrect ? Icons.check_circle : Icons.error, color: selectedOption!.isCorrect ? AppColors.green : AppColors.red),
+                    Icon(
+                      selectedOption!.isCorrect
+                          ? Icons.check_circle
+                          : Icons.error,
+                      color: selectedOption!.isCorrect
+                          ? AppColors.green
+                          : AppColors.red,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         selectedOption!.feedback,
                         style: TextStyle(
-                          color: selectedOption!.isCorrect ? AppColors.green : AppColors.red,
+                          color: selectedOption!.isCorrect
+                              ? AppColors.green
+                              : AppColors.red,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),

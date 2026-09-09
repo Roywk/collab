@@ -11,16 +11,13 @@ import 'data/sos_repository.dart';
 import 'data/user_account_repository.dart';
 import 'data/verification_repository.dart';
 import 'data/learning_repository.dart';
-import 'data/sos_repository.dart';
-import 'data/user_account_repository.dart';
-import 'data/verification_repository.dart';
 import 'screens/admin/admin_gate.dart';
 import 'screens/mobile/emergency_dashboard_screen.dart';
 import 'screens/mobile/mobile_auth_gate.dart';
 import 'screens/mobile/scam_map_screen.dart';
 import 'screens/mobile/user_profile_screen.dart';
 import 'screens/mobile/verification_home_screen.dart';
-import 'screens/mobile/verification_home_screen.dart';
+import 'screens/mobile/learning/learning_home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,12 +79,18 @@ class Visit1MyApp extends StatelessWidget {
         '/admin': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
         ),
+        '/admin/awareness': (context) => AdminGate(
+          repository: AdminRepository(client: accountRepository.client),
+          initialAwareness: true,
+        ),
+        '/learn': (context) =>
+            LearningHomeScreen(repository: learningRepository),
         '/profile': (context) =>
             UserProfileScreen(repository: accountRepository),
         '/verify': (context) => VerificationHomeScreen(
-              repository: verificationRepository,
-              learningRepository: learningRepository,
-            ),
+          repository: verificationRepository,
+          learningRepository: learningRepository,
+        ),
         '/map': (context) => ScamMapScreen(
           repository: ScamMapRepository(client: accountRepository.client),
         ),

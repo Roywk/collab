@@ -36,7 +36,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
     return MobileShell(
       title: 'Safety Lessons',
       onBack: () => Navigator.pop(context),
-      currentNavigationIndex: 4,
+      currentNavigationIndex: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -91,8 +91,12 @@ class _LessonsScreenState extends State<LessonsScreen> {
 
                 // 3. Implemented Filtering logic
                 final filteredItems = allItems.where((lesson) {
-                  if (selectedFilter == 'Location-Based') return lesson.isLocationBased;
-                  if (selectedFilter == 'General') return !lesson.isLocationBased;
+                  if (selectedFilter == 'Location-Based') {
+                    return lesson.isLocationBased;
+                  }
+                  if (selectedFilter == 'General') {
+                    return !lesson.isLocationBased;
+                  }
                   return true; // 'All'
                 }).toList();
 
@@ -103,7 +107,8 @@ class _LessonsScreenState extends State<LessonsScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: filteredItems.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final lesson = filteredItems[index];
                     return _buildLessonTile(context, lesson);
@@ -163,7 +168,9 @@ class _LessonsScreenState extends State<LessonsScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: lesson.isLocationBased ? AppColors.redSoft : AppColors.blueSoft,
+                color: lesson.isLocationBased
+                    ? AppColors.redSoft
+                    : AppColors.blueSoft,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -190,7 +197,11 @@ class _LessonsScreenState extends State<LessonsScreen> {
                         ),
                       ),
                       if (lesson.isCompleted)
-                        const Icon(Icons.check_circle, color: AppColors.green, size: 16),
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.green,
+                          size: 16,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -198,7 +209,10 @@ class _LessonsScreenState extends State<LessonsScreen> {
                     lesson.content,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.slate, fontSize: 11),
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 11,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -214,7 +228,10 @@ class _LessonsScreenState extends State<LessonsScreen> {
                       const SizedBox(width: 8),
                       Text(
                         '• ${lesson.readTime}',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),

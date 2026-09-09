@@ -28,7 +28,7 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
     return MobileShell(
       title: 'Scenario Simulations',
       onBack: () => Navigator.pop(context),
-      currentNavigationIndex: 4,
+      currentNavigationIndex: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -60,13 +60,14 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 final items = snapshot.data ?? [];
-                
+
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final scenario = items[index];
                     return _buildScenarioTile(context, scenario);
@@ -82,16 +83,23 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
 
   Widget _buildScenarioTile(BuildContext context, Scenario scenario) {
     final isCompleted = scenario.status == 'Completed';
-    
+
     return InkWell(
-      onTap: () {
+      onTap: () async {
         if (scenario.steps.isNotEmpty) {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ScenarioGameplayScreen(scenario: scenario),
+              builder: (_) => ScenarioGameplayScreen(
+                scenario: scenario,
+                repository: widget.repository,
+              ),
             ),
           );
+          if (!mounted) return;
+          setState(() {
+            scenarios = widget.repository.getScenarios();
+          });
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -118,25 +126,36 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        scenario.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppColors.navy,
+                      Expanded(
+                        child: Text(
+                          scenario.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: AppColors.navy,
+                          ),
                         ),
                       ),
                       if (scenario.status == 'Not Started') ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.redSoft,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'NEW',
-                            style: TextStyle(color: AppColors.red, fontSize: 8, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: AppColors.red,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -162,7 +181,11 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
               ),
               child: Text(
                 scenario.difficulty,
-                style: const TextStyle(color: AppColors.slate, fontSize: 10, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: AppColors.slate,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

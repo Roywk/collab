@@ -6,7 +6,7 @@ import '../../../models/learning_models.dart';
 
 class LessonDetailScreen extends StatefulWidget {
   const LessonDetailScreen({
-    required this.lesson, 
+    required this.lesson,
     required this.repository,
     super.key,
   });
@@ -27,15 +27,19 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       await widget.repository.completeLesson(widget.lesson.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lesson completed! +10 XP earned.')),
+          SnackBar(
+            content: Text(
+              'Lesson completed! +${widget.lesson.xpReward} XP earned.',
+            ),
+          ),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save progress: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save progress: $e')));
       }
     } finally {
       if (mounted) setState(() => isCompleting = false);
@@ -47,13 +51,14 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     return MobileShell(
       title: 'Safety Lesson',
       onBack: () => Navigator.pop(context),
-      currentNavigationIndex: 4,
+      currentNavigationIndex: 5,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Image.network(
-              widget.lesson.imageUrl ?? 'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?auto=format&fit=crop&q=80&w=800',
+              widget.lesson.imageUrl ??
+                  'https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?auto=format&fit=crop&q=80&w=800',
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -66,7 +71,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.redSoft,
                           borderRadius: BorderRadius.circular(4),
@@ -83,7 +91,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                       const SizedBox(width: 8),
                       Text(
                         widget.lesson.readTime,
-                        style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -99,21 +110,22 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   const SizedBox(height: 16),
                   const Text(
                     'How It Works',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.lesson.content,
-                    style: const TextStyle(color: AppColors.slate, fontSize: 13, height: 1.5),
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.redSoft.withOpacity(0.3),
+                      color: AppColors.redSoft.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.redSoft),
                     ),
@@ -129,36 +141,48 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ...widget.lesson.redFlags.map((flag) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('• ', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.bold)),
-                              Expanded(
-                                child: Text(
-                                  flag,
-                                  style: const TextStyle(color: AppColors.navy, fontSize: 12),
+                        ...widget.lesson.redFlags.map(
+                          (flag) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '• ',
+                                  style: TextStyle(
+                                    color: AppColors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Expanded(
+                                  child: Text(
+                                    flag,
+                                    style: const TextStyle(
+                                      color: AppColors.navy,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        )),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
                     'What To Do',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.lesson.whatToDo,
-                    style: const TextStyle(color: AppColors.slate, fontSize: 13, height: 1.5),
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   if (!widget.lesson.isCompleted)
@@ -182,7 +206,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                           SizedBox(width: 8),
                           Text(
                             'Lesson Completed',
-                            style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: AppColors.green,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),

@@ -15,6 +15,7 @@ class AdminShell extends StatelessWidget {
     this.onOpenThreatDatabase,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
+    this.onOpenAwareness,
     this.headerTitle = 'Scam & Threat Database',
     this.showTopBar = true,
     super.key,
@@ -31,6 +32,7 @@ class AdminShell extends StatelessWidget {
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
+  final VoidCallback? onOpenAwareness;
   final String headerTitle;
   final bool showTopBar;
 
@@ -84,6 +86,7 @@ class AdminShell extends StatelessWidget {
                         onOpenThreatDatabase: onOpenThreatDatabase,
                         onOpenBankHotlines: onOpenBankHotlines,
                         onOpenEmergencyFacilities: onOpenEmergencyFacilities,
+                        onOpenAwareness: onOpenAwareness,
                       ),
                     ),
                   )
@@ -106,6 +109,7 @@ class AdminShell extends StatelessWidget {
                   onOpenThreatDatabase: onOpenThreatDatabase,
                   onOpenBankHotlines: onOpenBankHotlines,
                   onOpenEmergencyFacilities: onOpenEmergencyFacilities,
+                  onOpenAwareness: onOpenAwareness,
                 ),
               ),
               Expanded(
@@ -222,6 +226,7 @@ class AdminSidebar extends StatelessWidget {
     this.onOpenThreatDatabase,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
+    this.onOpenAwareness,
     super.key,
   });
 
@@ -232,6 +237,7 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
+  final VoidCallback? onOpenAwareness;
 
   @override
   Widget build(BuildContext context) {
@@ -293,13 +299,11 @@ class AdminSidebar extends StatelessWidget {
           for (final item in menuItems)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: item.$2 == selectedMenuItem
-                      ? AppColors.blue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                ),
+              child: Material(
+                color: item.$2 == selectedMenuItem
+                    ? AppColors.blue
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
                 child: ListTile(
                   onTap: () {
                     switch (item.$2) {
@@ -314,6 +318,13 @@ class AdminSidebar extends StatelessWidget {
                         break;
                       case 'Emergency Facilities':
                         onOpenEmergencyFacilities?.call();
+                        break;
+                      case 'Awareness CMS':
+                        if (onOpenAwareness != null) {
+                          onOpenAwareness!.call();
+                        } else {
+                          Navigator.of(context).pushNamed('/admin/awareness');
+                        }
                         break;
                     }
                   },
