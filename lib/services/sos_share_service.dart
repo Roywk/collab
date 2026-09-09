@@ -10,13 +10,21 @@ String buildGoogleMapsLocationUrl({
   }).toString();
 }
 
-String buildSosMessage({required double latitude, required double longitude}) {
+String buildSosMessage({
+  required double latitude,
+  required double longitude,
+  String? address,
+}) {
   final locationUrl = buildGoogleMapsLocationUrl(
     latitude: latitude,
     longitude: longitude,
   );
+  final addressText = address == null || address.trim().isEmpty
+      ? ''
+      : ' Address: ${address.trim()}.';
   return 'Emergency! I need assistance. My current GPS location is: '
-      '$locationUrl. Please contact me or emergency services immediately.';
+      '$locationUrl.$addressText Please contact me or emergency services '
+      'immediately.';
 }
 
 String internationalPhoneDigits(String phoneNumber) {
