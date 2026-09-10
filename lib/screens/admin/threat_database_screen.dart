@@ -4,9 +4,13 @@ import 'package:intl/intl.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/admin_repository.dart';
+import '../../data/admin_bank_repository.dart';
+import '../../data/admin_facility_repository.dart';
 import '../../data/scam_map_repository.dart';
 import '../../models/module_models.dart';
 import 'admin_shell.dart';
+import 'admin_bank_hotline_screen.dart';
+import 'admin_emergency_facility_screen.dart';
 import 'threat_form_screen.dart';
 import 'manual_scam_case_screen.dart';
 import 'threat_heatmap_screen.dart';
@@ -101,6 +105,34 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
         successMessage = 'Official scam case published as Verified.';
       });
     }
+  }
+
+  Future<void> openBankHotlineManagement() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AdminBankHotlineScreen(
+          repository: SupabaseAdminBankRepository(
+            client: widget.repository.client,
+          ),
+          onSignOut: widget.onSignOut,
+          onOpenEmergencyFacilities: openEmergencyFacilityManagement,
+        ),
+      ),
+    );
+  }
+
+  Future<void> openEmergencyFacilityManagement() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AdminEmergencyFacilityScreen(
+          repository: SupabaseAdminFacilityRepository(
+            client: widget.repository.client,
+          ),
+          onSignOut: widget.onSignOut,
+          onOpenBankHotlines: openBankHotlineManagement,
+        ),
+      ),
+    );
   }
 
   Future<void> confirmDeactivate(ThreatRecord record) async {
@@ -206,9 +238,12 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Threat Database',
+      selectedMenuItem: 'Scam Moderation',
       onOpenHeatmap: openThreatHeatmap,
       onPublishScamCase: openManualScamCase,
+      onOpenThreatDatabase: () {},
+      onOpenBankHotlines: openBankHotlineManagement,
+      onOpenEmergencyFacilities: openEmergencyFacilityManagement,
       searchController: searchController,
       onSearchChanged: (value) {
         setState(() {

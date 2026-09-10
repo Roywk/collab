@@ -9,15 +9,20 @@ class MobileShell extends StatelessWidget {
     this.title,
     this.onBack,
     this.onAdmin,
+    this.onHome,
     this.onMap,
     this.onVerify,
     this.onReport,
     this.onEmergency,
     this.onLearn,
-    this.currentNavigationIndex = 1,
+    this.onProfile,
+    this.currentNavigationIndex = 2,
     this.gpsActive,
     this.showBottomNavigation = true,
     this.darkBackground = false,
+    this.statusLabel,
+    this.titleColor = AppColors.blue,
+    this.emergencyNavigation = false,
     super.key,
   });
 
@@ -25,15 +30,20 @@ class MobileShell extends StatelessWidget {
   final String? title;
   final VoidCallback? onBack;
   final VoidCallback? onAdmin;
+  final VoidCallback? onHome;
   final VoidCallback? onMap;
   final VoidCallback? onVerify;
   final VoidCallback? onReport;
   final VoidCallback? onEmergency;
   final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
   final int currentNavigationIndex;
   final bool? gpsActive;
   final bool showBottomNavigation;
   final bool darkBackground;
+  final String? statusLabel;
+  final Color titleColor;
+  final bool emergencyNavigation;
 
   @override
   Widget build(BuildContext context) {
@@ -73,18 +83,25 @@ class MobileShell extends StatelessWidget {
               ),
               const SizedBox(width: 8),
             ],
-            Text(
-              title ?? 'Visit 1MY',
-              style: const TextStyle(
-                color: AppColors.blue,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+            Expanded(
+              child: FittedBox(
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title ?? 'Visit 1MY',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          GpsStatusBadge(isActive: gpsActive),
+          GpsStatusBadge(isActive: gpsActive, label: statusLabel),
           PopupMenuButton<String>(
             tooltip: 'Notifications',
             icon: const Icon(
@@ -129,11 +146,14 @@ class MobileShell extends StatelessWidget {
       bottomNavigationBar: showBottomNavigation
           ? VisitBottomNavigation(
               currentIndex: currentNavigationIndex,
+              onHome: onHome,
               onMap: onMap,
               onVerify: onVerify,
               onReport: onReport,
               onEmergency: onEmergency,
               onLearn: onLearn,
+              onProfile: onProfile,
+              emergencyMode: emergencyNavigation,
             )
           : null,
     );
@@ -141,9 +161,10 @@ class MobileShell extends StatelessWidget {
 }
 
 class GpsStatusBadge extends StatelessWidget {
-  const GpsStatusBadge({this.isActive, super.key});
+  const GpsStatusBadge({this.isActive, this.label, super.key});
 
   final bool? isActive;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +185,7 @@ class GpsStatusBadge extends StatelessWidget {
           ),
           SizedBox(width: 5),
           Text(
-            isActive == false ? 'GPS Paused' : 'GPS Active',
+            label ?? (isActive == false ? 'GPS Paused' : 'GPS Active'),
             style: TextStyle(
               color: isActive == false ? AppColors.amber : AppColors.green,
               fontSize: 10,
@@ -179,33 +200,60 @@ class GpsStatusBadge extends StatelessWidget {
 
 class VisitBottomNavigation extends StatelessWidget {
   const VisitBottomNavigation({
-    this.currentIndex = 1,
+    this.currentIndex = 2,
+    this.onHome,
     this.onMap,
     this.onVerify,
     this.onReport,
     this.onEmergency,
     this.onLearn,
+    this.onProfile,
+    this.emergencyMode = false,
     super.key,
   });
 
   final int currentIndex;
+  final VoidCallback? onHome;
   final VoidCallback? onMap;
   final VoidCallback? onVerify;
   final VoidCallback? onReport;
   final VoidCallback? onEmergency;
   final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
+  final bool emergencyMode;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
+    final items = [
+      (Icons.home_outlined, 'Home'),
       (Icons.map_outlined, 'Map'),
       (Icons.verified_user_outlined, 'Verify'),
       (Icons.add_circle_outline, 'Report'),
       (Icons.phone_outlined, 'Emergency'),
       (Icons.menu_book_outlined, 'Learn'),
+      (Icons.person_outline_rounded, 'Profile'),
     ];
 
-    final callbacks = [onMap, onVerify, onReport, onEmergency, onLearn];
+    final callbacks = [
+      onHome ?? () => Navigator.of(context).popUntil((route) => route.isFirst),
+      onMap ??
+          () {
+            if (currentIndex != 1) Navigator.of(context).pushNamed('/map');
+          },
+      onVerify ??
+          () {
+            if (currentIndex != 2) Navigator.of(context).pushNamed('/verify');
+          },
+      onReport,
+      onEmergency ??
+          () {
+            if (currentIndex != 4) {
+              Navigator.of(context).pushNamed('/emergency');
+            }
+          },
+      onLearn,
+      onProfile ?? () => Navigator.of(context).pushNamed('/profile'),
+    ];
 
     return SafeArea(
       top: false,
@@ -227,43 +275,45 @@ class VisitBottomNavigation extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (int index = 0; index < items.length; index++)
-              InkWell(
-                onTap: callbacks[index],
-                child: SizedBox(
-                  width: 64,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (index == currentIndex)
-                        Container(
-                          width: 30,
-                          height: 2,
-                          margin: const EdgeInsets.only(bottom: 5),
-                          color: AppColors.blue,
-                        )
-                      else
-                        const SizedBox(height: 7),
-                      Icon(
-                        items[index].$1,
-                        size: 21,
-                        color: index == currentIndex
-                            ? AppColors.blue
-                            : AppColors.slate,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[index].$2,
-                        style: TextStyle(
+              Expanded(
+                child: InkWell(
+                  onTap: callbacks[index],
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (index == currentIndex)
+                          Container(
+                            width: 30,
+                            height: 2,
+                            margin: const EdgeInsets.only(bottom: 5),
+                            color: AppColors.blue,
+                          )
+                        else
+                          const SizedBox(height: 7),
+                        Icon(
+                          items[index].$1,
+                          size: 21,
                           color: index == currentIndex
                               ? AppColors.blue
                               : AppColors.slate,
-                          fontSize: 9,
-                          fontWeight: index == currentIndex
-                              ? FontWeight.w700
-                              : FontWeight.w600,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Text(
+                          items[index].$2,
+                          style: TextStyle(
+                            color: index == currentIndex
+                                ? AppColors.blue
+                                : AppColors.slate,
+                            fontSize: 9,
+                            fontWeight: index == currentIndex
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
