@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import 'admin_shell.dart';
 import 'reports_moderation_screen.dart';
@@ -38,14 +37,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final scamMapRepo = ScamMapRepository(client: widget.repository.client);
 
-    final onDashboard = () => _onSectionChanged('Dashboard Overview');
-    final onReports = () => _onSectionChanged('Reports Moderation');
-    final onHeatmap = () => _onSectionChanged('Geospatial Heatmap');
-    final onMerchants = () => _onSectionChanged('Verified Merchants');
-    final onThreatDb = () => _onSectionChanged('Scam Moderation');
-    final onAwareness = () => _onSectionChanged('Awareness CMS');
-    final onSettings = () => _onSectionChanged('System Logs & Settings');
-    final onPublish = () => _onSectionChanged('Publish Scam Case');
+    void onDashboard() => _onSectionChanged('Dashboard Overview');
+    void onReports() => _onSectionChanged('Reports Moderation');
+    void onHeatmap() => _onSectionChanged('Geospatial Heatmap');
+    void onMerchants() => _onSectionChanged('Verified Merchants');
+    void onThreatDb() => _onSectionChanged('Scam Moderation');
+    void onAwareness() => _onSectionChanged('Awareness CMS');
+    void onSettings() => _onSectionChanged('System Logs & Settings');
+    void onPublish() => _onSectionChanged('Publish Scam Case');
 
     switch (_selectedSection) {
       case 'Dashboard Overview':

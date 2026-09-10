@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/app_error_message.dart';
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import '../../models/module_models.dart';
+import '../../services/input_validation_service.dart';
 import 'admin_shell.dart';
 
 class ThreatFormScreen extends StatefulWidget {
@@ -29,12 +31,12 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
   late final TextEditingController activityController;
   late final TextEditingController registrationController;
   late final TextEditingController evidenceController;
-  late final TextEditingController policeController;
 
   late String selectedCategory;
   late RiskLevel selectedRisk;
 
   bool isSaving = false;
+  String? identifierError;
 
   bool get isEditing => widget.record != null;
 
@@ -61,9 +63,6 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
     evidenceController = TextEditingController(
       text: record?.evidenceNotes ?? '',
     );
-    policeController = TextEditingController(
-      text: record?.policeReportReference ?? '',
-    );
 
     selectedCategory = record?.category ?? 'Select Category';
 
@@ -81,12 +80,29 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
     activityController.dispose();
     registrationController.dispose();
     evidenceController.dispose();
-    policeController.dispose();
     super.dispose();
   }
 
   Future<void> saveRecord() async {
+    setState(() {
+      identifierError = null;
+    });
+
     if (!formKey.currentState!.validate()) {
+      return;
+    }
+
+    final hasIdentifier =
+        phoneController.text.trim().isNotEmpty ||
+        emailController.text.trim().isNotEmpty ||
+        urlController.text.trim().isNotEmpty ||
+        qrController.text.trim().isNotEmpty;
+
+    if (!hasIdentifier) {
+      setState(() {
+        identifierError =
+            'Enter at least one phone number, email, URL or QR value.';
+      });
       return;
     }
 
@@ -120,7 +136,6 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
         reportCount: previousRecord?.reportCount ?? 0,
         riskPoints: previousRecord?.riskPoints ?? 0,
         evidenceNotes: evidenceController.text.trim(),
-        policeReportReference: policeController.text.trim(),
         updatedAt: DateTime.now(),
       );
 
@@ -131,13 +146,22 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
       }
 
       Navigator.of(context).pop(true);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      logDebugError('Save threat record', error, stackTrace);
+
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save the threat record: $error')),
+        SnackBar(
+          content: Text(
+            friendlyErrorMessage(
+              error,
+              fallback: 'The threat record could not be saved. Try again.',
+            ),
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -212,10 +236,9 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                           hintText: 'Example: Kuala Lumpur Tour Service',
                         ),
                         validator: (value) {
-                          if ((value ?? '').trim().isEmpty) {
-                            return 'Business name is required';
-                          }
-                          return null;
+                          return InputValidationService.validateBusinessName(
+                            value,
+                          );
                         },
                       ),
                     ),
@@ -231,6 +254,7 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                           decoration: const InputDecoration(
                             hintText: '+60 12-345 6789',
                           ),
+                          validator: InputValidationService.validatePhone,
                         ),
                       ),
                       right: LabeledAdminField(
@@ -241,6 +265,7 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                           decoration: const InputDecoration(
                             hintText: 'contact@example.com',
                           ),
+                          validator: InputValidationService.validateEmail,
                         ),
                       ),
                     ),
@@ -256,6 +281,7 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                           decoration: const InputDecoration(
                             hintText: 'https://example.com/payment',
                           ),
+                          validator: InputValidationService.validateWebUrl,
                         ),
                       ),
                       right: LabeledAdminField(
@@ -269,6 +295,18 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                         ),
                       ),
                     ),
+
+                    if (identifierError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        identifierError!,
+                        style: const TextStyle(
+                          color: AppColors.red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 16),
 
@@ -371,18 +409,6 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                         decoration: const InputDecoration(
                           hintText:
                               'Tourist statements, investigation notes or evidence summary',
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    LabeledAdminField(
-                      label: 'POLICE REPORT REFERENCE',
-                      child: TextFormField(
-                        controller: policeController,
-                        decoration: const InputDecoration(
-                          hintText: 'Example: PDRM-KL-2026-88319',
                         ),
                       ),
                     ),

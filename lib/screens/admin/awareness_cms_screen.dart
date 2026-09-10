@@ -102,10 +102,16 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                     children: [
                       Text(
                         'Awareness CMS',
-                        style: TextStyle(color: AppColors.navy, fontSize: 24, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                      Text('Manage educational articles and emergency alerts.',
-                          style: TextStyle(color: AppColors.slate, fontSize: 13)),
+                      Text(
+                        'Manage educational articles and emergency alerts.',
+                        style: TextStyle(color: AppColors.slate, fontSize: 13),
+                      ),
                     ],
                   ),
                   FilledButton.icon(
@@ -121,7 +127,9 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 350),
+                    constraints: BoxConstraints(
+                      minWidth: MediaQuery.of(context).size.width - 350,
+                    ),
                     child: DataTable(
                       columns: const [
                         DataColumn(label: Text('Article Title')),
@@ -133,20 +141,38 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                       rows: content.map((item) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(item['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                            DataCell(
+                              Text(
+                                item['title'] ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                             DataCell(Text(item['category'] ?? '')),
-                            DataCell(_buildStatusBadge(item['status'] ?? 'Draft')),
+                            DataCell(
+                              _buildStatusBadge(item['status'] ?? 'Draft'),
+                            ),
                             DataCell(Text(item['updated_at'] ?? '—')),
                             DataCell(
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: AppColors.blue, size: 20),
-                                    onPressed: () => _openEditor(item['id']?.toString()),
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      color: AppColors.blue,
+                                      size: 20,
+                                    ),
+                                    onPressed: () =>
+                                        _openEditor(item['id']?.toString()),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
                                     onPressed: () {
                                       // Add delete confirmation
                                     },
@@ -173,12 +199,18 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isPublished ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+        color: isPublished
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status,
-        style: TextStyle(color: isPublished ? Colors.green : Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: isPublished ? Colors.green : Colors.grey,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

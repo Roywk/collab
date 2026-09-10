@@ -77,7 +77,7 @@ class AdminRepository {
         .select(
           '*, '
           'threat_record_admin_details('
-          'evidence_notes, police_report_reference'
+          'evidence_notes'
           '), '
           'scam_reports(report_code)',
         )
@@ -118,33 +118,45 @@ class AdminRepository {
 
       threatRecordId = insertedRecord['id'].toString();
     } else {
-      await client.from('threat_records').update(payload).eq('id', record.id);
+      final updatedRecord = await client
+          .from('threat_records')
+          .update(payload)
+          .eq('id', record.id)
+          .eq('is_active', true)
+          .select('id')
+          .maybeSingle();
+
+      if (updatedRecord == null) {
+        throw StateError('The selected threat record no longer exists.');
+      }
 
       threatRecordId = record.id;
     }
 
-    final hasAdminDetails =
-        (record.evidenceNotes ?? '').trim().isNotEmpty ||
-        (record.policeReportReference ?? '').trim().isNotEmpty;
-
-    if (hasAdminDetails) {
-      await client.from('threat_record_admin_details').upsert({
-        'threat_record_id': threatRecordId,
-        'evidence_notes': _nullableText(record.evidenceNotes),
-        'police_report_reference': _nullableText(record.policeReportReference),
-        'updated_at': DateTime.now().toIso8601String(),
-      }, onConflict: 'threat_record_id');
-    }
+    await client.from('threat_record_admin_details').upsert({
+      'threat_record_id': threatRecordId,
+      'evidence_notes': _nullableText(record.evidenceNotes),
+      'updated_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'threat_record_id');
   }
 
   Future<void> deactivateThreatRecord(String recordId) async {
-    await client
+    final updatedRecord = await client
         .from('threat_records')
         .update({
           'is_active': false,
           'updated_at': DateTime.now().toIso8601String(),
         })
-        .eq('id', recordId);
+        .eq('id', recordId)
+        .eq('is_active', true)
+        .select('id')
+        .maybeSingle();
+
+    if (updatedRecord == null) {
+      throw StateError(
+        'The selected record no longer exists or has already been deactivated.',
+      );
+    }
   }
 
   // Scam Report Moderation
@@ -267,8 +279,6 @@ class AdminRepository {
       registrationStatus: data['registration_status']?.toString(),
       reportCount: reportValue is List ? reportValue.length : 0,
       evidenceNotes: adminDetails?['evidence_notes']?.toString(),
-      policeReportReference: adminDetails?['police_report_reference']
-          ?.toString(),
       updatedAt: DateTime.tryParse(data['updated_at']?.toString() ?? ''),
     );
   }

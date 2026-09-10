@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/app_error_message.dart';
 import '../models/module_models.dart';
 
 class VerificationRepository {
@@ -110,13 +111,14 @@ class VerificationRepository {
         registrationStatus: data['registration_status']?.toString(),
         reportCount: _toInteger(data['report_count']),
         riskPoints: _toInteger(data['risk_points']),
+        matchDistance: _toInteger(data['match_distance']),
         riskLevel: RiskLevelExtension.fromText(
           data['calculated_risk']?.toString(),
         ),
       );
     }
 
-    await _saveVerification(
+    await _saveVerificationBestEffort(
       source: 'business_search',
       inputType: _detectInputType(cleanedQuery),
       queryValue: cleanedQuery,
@@ -159,7 +161,7 @@ class VerificationRepository {
     }).toList();
   }
 
-  Future<void> _saveVerification({
+  Future<void> _saveVerificationBestEffort({
     required String source,
     required String inputType,
     required String queryValue,
@@ -167,18 +169,22 @@ class VerificationRepository {
   }) async {
     final currentUser = client.auth.currentUser;
 
-    if (currentUser == null) {
+    if (currentUser == null || result.id.isEmpty) {
       return;
     }
 
-    await client.from('verification_history').insert({
-      'user_id': currentUser.id,
-      'source': source,
-      'input_type': inputType,
-      'query_value': queryValue,
-      'threat_record_id': result.id.isEmpty ? null : result.id,
-      'result_status': result.riskLevel.label,
-    });
+    try {
+      await client.from('verification_history').insert({
+        'user_id': currentUser.id,
+        'source': source,
+        'input_type': inputType,
+        'query_value': queryValue,
+        'threat_record_id': result.id,
+        'result_status': result.riskLevel.label,
+      });
+    } catch (error, stackTrace) {
+      logDebugError('Save business verification history', error, stackTrace);
+    }
   }
 
   static int _toInteger(dynamic value) {

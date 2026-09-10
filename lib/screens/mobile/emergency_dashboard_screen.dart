@@ -6,6 +6,7 @@ import '../../data/emergency_repository.dart';
 import '../../data/help_nearby_repository.dart';
 import '../../data/incident_report_repository.dart';
 import '../../data/sos_repository.dart';
+import '../../services/location_service.dart';
 import 'bank_hotline_directory_screen.dart';
 import 'emergency_location_gate.dart';
 import 'help_nearby_permission_screen.dart';
@@ -18,6 +19,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
     required this.incidentReportRepository,
     required this.helpNearbyRepository,
     required this.sosRepository,
+    this.locationService,
     super.key,
   });
 
@@ -25,6 +27,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
   final IncidentReportRepository incidentReportRepository;
   final HelpNearbyRepository helpNearbyRepository;
   final SosRepository sosRepository;
+  final LocationService? locationService;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +76,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
                     description:
                         'Location permission is required to confirm where the '
                         'incident occurred and assist local authorities.',
+                    locationService: locationService,
                     child: IncidentReportFormScreen(
                       repository: incidentReportRepository,
                     ),
@@ -109,6 +113,7 @@ class EmergencyDashboardScreen extends StatelessWidget {
                     description:
                         'Allow location access so your live position can be '
                         'included in the emergency message.',
+                    locationService: locationService,
                     child: SosLocationScreen(repository: sosRepository),
                   ),
                 ),

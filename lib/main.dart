@@ -10,6 +10,7 @@ import 'data/scam_map_repository.dart';
 import 'data/sos_repository.dart';
 import 'data/user_account_repository.dart';
 import 'data/verification_repository.dart';
+import 'data/learning_repository.dart';
 import 'screens/admin/admin_gate.dart';
 import 'screens/mobile/emergency_dashboard_screen.dart';
 import 'screens/mobile/mobile_auth_gate.dart';
@@ -17,13 +18,13 @@ import 'screens/mobile/report_scam_screen.dart';
 import 'screens/mobile/scam_map_screen.dart';
 import 'screens/mobile/user_profile_screen.dart';
 import 'screens/mobile/verification_home_screen.dart';
+import 'screens/mobile/learning/learning_home_screen.dart';
 import 'screens/mobile/scam_report_history_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-
   const supabaseKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
 
   if (supabaseUrl.isEmpty || supabaseKey.isEmpty) {
@@ -42,9 +43,14 @@ Future<void> main() async {
 
     final client = Supabase.instance.client;
 
+    if (client.auth.currentSession == null) {
+      await client.auth.signInAnonymously();
+    }
+
     runApp(
       Visit1MyApp(
-        repository: VerificationRepository(client: client),
+        verificationRepository: VerificationRepository(client: client),
+        learningRepository: LearningRepository(client: client),
         accountRepository: SupabaseUserAccountRepository(client: client),
       ),
     );
@@ -55,12 +61,14 @@ Future<void> main() async {
 
 class Visit1MyApp extends StatelessWidget {
   const Visit1MyApp({
-    required this.repository,
+    required this.verificationRepository,
+    required this.learningRepository,
     required this.accountRepository,
     super.key,
   });
 
-  final VerificationRepository repository;
+  final VerificationRepository verificationRepository;
+  final LearningRepository learningRepository;
   final UserAccountRepository accountRepository;
 
   @override
@@ -73,13 +81,22 @@ class Visit1MyApp extends StatelessWidget {
         '/admin': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
         ),
+        '/admin/awareness': (context) => AdminGate(
+          repository: AdminRepository(client: accountRepository.client),
+          initialAwareness: true,
+        ),
+        '/learn': (context) =>
+            LearningHomeScreen(repository: learningRepository),
         '/profile': (context) => UserProfileScreen(
           repository: accountRepository,
           incidentReportRepository: SupabaseIncidentReportRepository(
             client: accountRepository.client,
           ),
         ),
-        '/verify': (context) => VerificationHomeScreen(repository: repository),
+        '/verify': (context) => VerificationHomeScreen(
+          repository: verificationRepository,
+          learningRepository: learningRepository,
+        ),
         '/map': (context) => ScamMapScreen(
           repository: ScamMapRepository(client: accountRepository.client),
         ),

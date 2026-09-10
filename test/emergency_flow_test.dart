@@ -8,6 +8,7 @@ import 'package:collab/models/help_nearby_models.dart';
 import 'package:collab/models/incident_report_models.dart';
 import 'package:collab/models/sos_models.dart';
 import 'package:collab/screens/mobile/emergency_dashboard_screen.dart';
+import 'package:collab/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -57,6 +58,12 @@ class _FakeSosRepository implements SosRepository {
   }) async {}
 }
 
+class _GrantedLocationService extends LocationService {
+  @override
+  Future<LocationAccessStatus> accessStatus() async =>
+      LocationAccessStatus.granted;
+}
+
 void main() {
   test('bank relation data is parsed without a hard-coded fallback', () {
     final bank = BankHotline.fromUserBankJson({
@@ -96,6 +103,7 @@ void main() {
           incidentReportRepository: _FakeIncidentReportRepository(),
           helpNearbyRepository: _FakeHelpNearbyRepository(),
           sosRepository: _FakeSosRepository(),
+          locationService: _GrantedLocationService(),
         ),
       ),
     );
@@ -133,6 +141,7 @@ void main() {
           incidentReportRepository: _FakeIncidentReportRepository(),
           helpNearbyRepository: _FakeHelpNearbyRepository(),
           sosRepository: _FakeSosRepository(),
+          locationService: _GrantedLocationService(),
         ),
       ),
     );

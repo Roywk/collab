@@ -11,9 +11,11 @@ import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../core/haversine.dart';
 import '../../data/scam_map_repository.dart';
+import '../../data/learning_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/location_service.dart';
 import '../../services/scam_alert_notification_service.dart';
+import 'learning/learning_home_screen.dart';
 
 class ScamMapScreen extends StatefulWidget {
   const ScamMapScreen({
@@ -239,6 +241,15 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
       onVerify:
           widget.onOpenVerification ??
           () => Navigator.of(context).pushNamed('/verify'),
+      onLearn: () {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => LearningHomeScreen(
+              repository: LearningRepository(client: widget.repository.client),
+            ),
+          ),
+        );
+      },
       gpsActive: _position != null,
       child: Column(
         children: [
@@ -474,7 +485,6 @@ class ScamStatusLegend extends StatelessWidget {
           ),
           SizedBox(height: 4),
           _LegendRow(color: AppColors.red, label: 'Verified Alerts'),
-          _LegendRow(color: AppColors.amber, label: 'Pending Verification'),
         ],
       ),
     );

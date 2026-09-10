@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/app_theme.dart';
-import '../../core/app_widgets.dart';
 import '../../data/admin_repository.dart';
 import '../../models/report_models.dart';
 import 'admin_shell.dart';
@@ -44,33 +43,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   late String _currentStatus;
   final TextEditingController _notesController = TextEditingController();
   bool _isSaving = false;
-  List<ScamReport> _nearbyReports = [];
-  bool _loadingNearby = true;
 
   @override
   void initState() {
     super.initState();
     _currentStatus = widget.report.verificationStatus;
     _notesController.text = widget.report.adminNotes ?? '';
-    _loadNearby();
-  }
-
-  Future<void> _loadNearby() async {
-    try {
-      final nearby = await widget.repository.getNearbyReports(
-        widget.report.latitude,
-        widget.report.longitude,
-        excludeId: widget.report.id,
-      );
-      if (mounted) {
-        setState(() {
-          _nearbyReports = nearby;
-          _loadingNearby = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _loadingNearby = false);
-    }
   }
 
   @override
@@ -95,7 +73,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to update: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -111,12 +92,20 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(color: AppColors.redSoft, shape: BoxShape.circle),
-              child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              decoration: const BoxDecoration(
+                color: AppColors.redSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Delete Report #${widget.report.id?.substring(0, 4).toUpperCase()}?', 
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)
+            Text(
+              'Delete Report #${widget.report.id?.substring(0, 4).toUpperCase()}?',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
           ],
         ),
@@ -129,12 +118,20 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.slate)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.slate),
+            ),
           ),
           const SizedBox(width: 8),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('Confirm Delete'),
           ),
         ],
@@ -145,27 +142,35 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       try {
         await widget.repository.deleteScamReport(widget.report.id!);
         if (!mounted) return;
-        
+
         await showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.check_circle, color: Colors.green, size: 48),
                 const SizedBox(height: 16),
-                Text('Report #${widget.report.id?.substring(0, 4).toUpperCase()} Deleted Successfully!', 
+                Text(
+                  'Report #${widget.report.id?.substring(0, 4).toUpperCase()} Deleted Successfully!',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () => Navigator.pop(context),
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.navy,
+                    ),
                     child: const Text('Done'),
                   ),
                 ),
@@ -179,7 +184,10 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -254,14 +262,27 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           constraints: const BoxConstraints(),
         ),
         const SizedBox(width: 12),
-        Text('Scam Moderation', style: TextStyle(color: AppColors.slate, fontSize: 12)),
+        Text(
+          'Scam Moderation',
+          style: TextStyle(color: AppColors.slate, fontSize: 12),
+        ),
         const SizedBox(width: 4),
         const Icon(Icons.chevron_right, size: 14, color: AppColors.slate),
         const SizedBox(width: 4),
-        Text('Report #${widget.report.id?.substring(0, 4).toUpperCase()}', style: TextStyle(color: AppColors.slate, fontSize: 12)),
+        Text(
+          'Report #${widget.report.id?.substring(0, 4).toUpperCase()}',
+          style: TextStyle(color: AppColors.slate, fontSize: 12),
+        ),
         const SizedBox(width: 4),
         const Icon(Icons.chevron_right, size: 14, color: AppColors.slate),
-        const Text('Update Status', style: TextStyle(color: AppColors.navy, fontSize: 12, fontWeight: FontWeight.bold)),
+        const Text(
+          'Update Status',
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -280,37 +301,93 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Incident Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.navy)),
+              const Text(
+                'Incident Summary',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navy,
+                ),
+              ),
               Text(
                 'RM ${widget.report.amountLost?.toStringAsFixed(2) ?? '0.00'}',
-                style: const TextStyle(color: AppColors.red, fontSize: 18, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: AppColors.red,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           _buildStatusBadge(widget.report.verificationStatus),
           const SizedBox(height: 32),
-          
+
           Wrap(
             spacing: 40,
             runSpacing: 24,
             children: [
-              _buildInfoColumn('REPORT ID', 'RPT-2024-${widget.report.id?.substring(0, 4).toUpperCase()}'),
-              _buildInfoColumn('SCAM CATEGORY', widget.report.category.toUpperCase()),
-              _buildInfoColumn('DATE REPORTED', DateFormat('MMM dd, yyyy at h:mm a').format(widget.report.createdAt)),
-              _buildInfoColumn('REPORTER', widget.report.isAnonymous ? 'Anonymous (UUID: ${widget.report.id?.substring(0, 4)})' : 'User_${widget.report.id?.substring(0, 3)}'),
-              _buildInfoColumn('LOCATION', widget.report.locationName ?? 'Unknown Location'),
-              _buildInfoColumn('GPS COORDINATES', '${widget.report.latitude.toStringAsFixed(4)}° N, ${widget.report.longitude.toStringAsFixed(4)}° E'),
+              _buildInfoColumn(
+                'REPORT ID',
+                'RPT-2024-${widget.report.id?.substring(0, 4).toUpperCase()}',
+              ),
+              _buildInfoColumn(
+                'SCAM CATEGORY',
+                widget.report.category.toUpperCase(),
+              ),
+              _buildInfoColumn(
+                'DATE REPORTED',
+                DateFormat(
+                  'MMM dd, yyyy at h:mm a',
+                ).format(widget.report.createdAt),
+              ),
+              _buildInfoColumn(
+                'REPORTER',
+                widget.report.isAnonymous
+                    ? 'Anonymous (UUID: ${widget.report.id?.substring(0, 4)})'
+                    : 'User_${widget.report.id?.substring(0, 3)}',
+              ),
+              _buildInfoColumn(
+                'LOCATION',
+                widget.report.locationName ?? 'Unknown Location',
+              ),
+              _buildInfoColumn(
+                'GPS COORDINATES',
+                '${widget.report.latitude.toStringAsFixed(4)}° N, ${widget.report.longitude.toStringAsFixed(4)}° E',
+              ),
             ],
           ),
-          
+
           const SizedBox(height: 32),
-          const Text('DETAILED DESCRIPTION', style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          const Text(
+            'DETAILED DESCRIPTION',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 12),
-          Text(widget.report.description, style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF4A4E69))),
-          
+          Text(
+            widget.report.description,
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.6,
+              color: Color(0xFF4A4E69),
+            ),
+          ),
+
           const SizedBox(height: 32),
-          const Text('EVIDENCE ATTACHED (2 PHOTOS)', style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          const Text(
+            'EVIDENCE ATTACHED (2 PHOTOS)',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -328,9 +405,24 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(value, style: const TextStyle(color: AppColors.navy, fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.navy,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -347,10 +439,15 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.line),
           ),
-          child: const Center(child: Icon(Icons.image_outlined, color: AppColors.slate)),
+          child: const Center(
+            child: Icon(Icons.image_outlined, color: AppColors.slate),
+          ),
         ),
         const SizedBox(height: 6),
-        Text(name, style: const TextStyle(color: AppColors.muted, fontSize: 10)),
+        Text(
+          name,
+          style: const TextStyle(color: AppColors.muted, fontSize: 10),
+        ),
       ],
     );
   }
@@ -366,33 +463,78 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Status Management', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
+          const Text(
+            'Status Management',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
           const SizedBox(height: 24),
-          const Text('CHANGE STATUS VERIFICATION', style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const Text(
+            'CHANGE STATUS VERIFICATION',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _currentStatus,
+            initialValue: _currentStatus,
             items: ['Pending', 'Verified', 'Resolved', 'Fake']
-                .map((s) => DropdownMenuItem(
-                      value: s, 
-                      child: Row(
-                        children: [
-                          CircleAvatar(radius: 4, backgroundColor: _getStatusColor(s)),
-                          const SizedBox(width: 8),
-                          Text(s, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                        ],
-                      )
-                    ))
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s,
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 4,
+                          backgroundColor: _getStatusColor(s),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          s,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _currentStatus = v!),
-            decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 32),
-          const Text('STATUS HISTORY', style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const Text(
+            'STATUS HISTORY',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 16),
           _buildHistoryTimeline(),
           const SizedBox(height: 24),
-          const Text('ADMINISTRATIVE VERIFICATION NOTES', style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const Text(
+            'ADMINISTRATIVE VERIFICATION NOTES',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _notesController,
@@ -409,7 +551,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                  ),
                   child: const Text('Cancel'),
                 ),
               ),
@@ -417,10 +561,20 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               Expanded(
                 child: FilledButton(
                   onPressed: _isSaving ? null : _saveChanges,
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.red, minimumSize: const Size(0, 44)),
-                  child: _isSaving 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Save Changes'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.red,
+                    minimumSize: const Size(0, 44),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Save Changes'),
                 ),
               ),
             ],
@@ -429,7 +583,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           Center(
             child: TextButton(
               onPressed: _confirmDelete,
-              child: const Text('Delete Report', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Delete Report',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ],
@@ -440,7 +600,11 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   Widget _buildHistoryTimeline() {
     return Column(
       children: [
-        _buildTimelineItem('Under Review', 'Jul 15, 2026 4:10 PM by Admin Sarah', true),
+        _buildTimelineItem(
+          'Under Review',
+          'Jul 15, 2026 4:10 PM by Admin Sarah',
+          true,
+        ),
         _buildTimelineItem('Created', 'Jul 15, 2026 3:42 PM by System', false),
       ],
     );
@@ -468,8 +632,18 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isActive ? AppColors.navy : AppColors.slate)),
-              Text(time, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: isActive ? AppColors.navy : AppColors.slate,
+                ),
+              ),
+              Text(
+                time,
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
               const SizedBox(height: 16),
             ],
           ),
@@ -492,11 +666,27 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Precise Incident Location', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.navy)),
+              const Text(
+                'Precise Incident Location',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.redSoft, borderRadius: BorderRadius.circular(4)),
-                child: const Text('LIVE CLUSTERS', style: TextStyle(color: AppColors.red, fontSize: 8, fontWeight: FontWeight.w900)),
+                decoration: BoxDecoration(
+                  color: AppColors.redSoft,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'LIVE CLUSTERS',
+                  style: TextStyle(
+                    color: AppColors.red,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ],
           ),
@@ -506,16 +696,35 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: FlutterMap(
-                options: MapOptions(initialCenter: LatLng(widget.report.latitude, widget.report.longitude), initialZoom: 15),
+                options: MapOptions(
+                  initialCenter: LatLng(
+                    widget.report.latitude,
+                    widget.report.longitude,
+                  ),
+                  initialZoom: 15,
+                ),
                 children: [
-                  TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
-                  MarkerLayer(markers: [
-                    Marker(
-                      point: LatLng(widget.report.latitude, widget.report.longitude),
-                      width: 40, height: 40,
-                      child: const Icon(Icons.location_on, color: AppColors.red, size: 36),
-                    ),
-                  ]),
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(
+                          widget.report.latitude,
+                          widget.report.longitude,
+                        ),
+                        width: 40,
+                        height: 40,
+                        child: const Icon(
+                          Icons.location_on,
+                          color: AppColors.red,
+                          size: 36,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -527,10 +736,14 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'verified': return Colors.green;
-      case 'fake': return Colors.red;
-      case 'resolved': return Colors.blue;
-      default: return Colors.orange;
+      case 'verified':
+        return Colors.green;
+      case 'fake':
+        return Colors.red;
+      case 'resolved':
+        return Colors.blue;
+      default:
+        return Colors.orange;
     }
   }
 
@@ -538,8 +751,18 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     Color color = _getStatusColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

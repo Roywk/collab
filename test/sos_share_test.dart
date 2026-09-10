@@ -33,6 +33,20 @@ void main() {
     expect(message, contains('query=3.1478%2C101.7108'));
   });
 
+  test('SOS message keeps precise GPS link and adds readable address', () {
+    final message = buildSosMessage(
+      latitude: 3.1478,
+      longitude: 101.7108,
+      address: '45 Jalan Bukit Bintang, Kuala Lumpur, Malaysia',
+    );
+
+    expect(message, contains('query=3.1478%2C101.7108'));
+    expect(
+      message,
+      contains('Address: 45 Jalan Bukit Bintang, Kuala Lumpur, Malaysia.'),
+    );
+  });
+
   test('WhatsApp URI targets the database contact with pre-filled text', () {
     final uri = buildWhatsAppSosUri(
       contact: contact,
