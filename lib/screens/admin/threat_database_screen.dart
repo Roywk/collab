@@ -19,11 +19,27 @@ class ThreatDatabaseScreen extends StatefulWidget {
   const ThreatDatabaseScreen({
     required this.repository,
     required this.onSignOut,
+    this.onOpenDashboard,
+    this.onOpenReports,
+    this.onOpenHeatmap,
+    this.onOpenVerifiedMerchants,
+    this.onOpenThreatDatabase,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
+    this.onOpenPublishScamCase,
     super.key,
   });
 
   final AdminRepository repository;
   final Future<void> Function() onSignOut;
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenReports;
+  final VoidCallback? onOpenHeatmap;
+  final VoidCallback? onOpenVerifiedMerchants;
+  final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenPublishScamCase;
 
   @override
   State<ThreatDatabaseScreen> createState() {
@@ -87,7 +103,18 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) =>
-            ThreatHeatmapScreen(repository: _scamMapRepository),
+            ThreatHeatmapScreen(
+          repository: _scamMapRepository,
+          onSignOut: widget.onSignOut,
+          onOpenDashboard: widget.onOpenDashboard,
+          onOpenReports: widget.onOpenReports,
+          onOpenHeatmap: widget.onOpenHeatmap,
+          onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
+          onOpenThreatDatabase: widget.onOpenThreatDatabase,
+          onOpenAwarenessCms: widget.onOpenAwarenessCms,
+          onOpenSettings: widget.onOpenSettings,
+          onOpenPublishScamCase: widget.onOpenPublishScamCase,
+        ),
       ),
     );
   }
@@ -231,17 +258,18 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
     }).toList();
   }
 
-  Future<void> signOut() async {
-    await widget.onSignOut();
-  }
-
   @override
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Scam Moderation',
-      onOpenHeatmap: openThreatHeatmap,
-      onPublishScamCase: openManualScamCase,
-      onOpenThreatDatabase: () {},
+      onOpenDashboard: widget.onOpenDashboard,
+      onOpenReports: widget.onOpenReports,
+      onOpenHeatmap: widget.onOpenHeatmap,
+      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
+      onOpenThreatDatabase: widget.onOpenThreatDatabase,
+      onOpenAwarenessCms: widget.onOpenAwarenessCms,
+      onOpenSettings: widget.onOpenSettings,
+      onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenBankHotlines: openBankHotlineManagement,
       onOpenEmergencyFacilities: openEmergencyFacilityManagement,
       searchController: searchController,
@@ -250,7 +278,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
           searchText = value;
         });
       },
-      onSignOut: signOut,
+      onSignOut: widget.onSignOut,
       child: FutureBuilder<List<ThreatRecord>>(
         future: recordsFuture,
         builder: (context, snapshot) {
@@ -304,9 +332,9 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
             ...allRecords.map((record) => record.category),
           }.toList()..sort();
 
-          if (!categories.contains(selectedCategory)) {
-            selectedCategory = 'All Categories';
-          }
+          final currentCategory = categories.contains(selectedCategory)
+              ? selectedCategory
+              : 'All Categories';
 
           final filteredRecords = filterRecords(allRecords);
 
@@ -356,12 +384,12 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: openThreatHeatmap,
+                        onPressed: widget.onOpenHeatmap ?? openThreatHeatmap,
                         icon: const Icon(Icons.map_outlined, size: 18),
                         label: const Text('Threat Heatmap'),
                       ),
                       FilledButton.icon(
-                        onPressed: openManualScamCase,
+                        onPressed: widget.onOpenPublishScamCase ?? openManualScamCase,
                         icon: const Icon(
                           Icons.add_location_alt_outlined,
                           size: 18,
@@ -485,7 +513,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         width: 230,
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
-                          initialValue: selectedRisk,
+                          value: selectedRisk,
                           decoration: const InputDecoration(
                             labelText: 'Risk level',
                           ),
@@ -516,7 +544,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         width: 280,
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
-                          initialValue: selectedCategory,
+                          value: currentCategory,
                           decoration: const InputDecoration(
                             labelText: 'Category',
                           ),

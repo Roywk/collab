@@ -13,6 +13,7 @@ import 'data/verification_repository.dart';
 import 'screens/admin/admin_gate.dart';
 import 'screens/mobile/emergency_dashboard_screen.dart';
 import 'screens/mobile/mobile_auth_gate.dart';
+import 'screens/mobile/report_scam_screen.dart';
 import 'screens/mobile/scam_map_screen.dart';
 import 'screens/mobile/user_profile_screen.dart';
 import 'screens/mobile/verification_home_screen.dart';
@@ -81,6 +82,7 @@ class Visit1MyApp extends StatelessWidget {
         '/map': (context) => ScamMapScreen(
           repository: ScamMapRepository(client: accountRepository.client),
         ),
+        '/report': (context) => const ReportScamScreen(),
         '/emergency': (context) => EmergencyDashboardScreen(
           repository: SupabaseEmergencyRepository(
             client: accountRepository.client,
