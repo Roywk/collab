@@ -26,20 +26,15 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   final _locationController = TextEditingController();
   final _sourceController = TextEditingController();
 
-  String _category = 'Taxi Tout';
+  late Future<List<String>> _categoriesFuture;
+  String _category = ScamCategories.taxi;
   bool _saving = false;
 
-  static const _categories = [
-    'Taxi Tout',
-    'Pickpocket',
-    'Overcharging',
-    'Photo Scam',
-    'Transport Scam',
-    'QR Code Fraud',
-    'Fake Services',
-    'Phishing',
-    'Other',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _categoriesFuture = widget.repository.getActiveCategories();
+  }
 
   @override
   void dispose() {
@@ -135,7 +130,7 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Scam Moderation',
+      selectedMenuItem: 'Scam Report Moderation',
       onBack: () => Navigator.of(context).pop(),
       onOpenThreatDatabase: () => Navigator.of(context).pop(),
       child: SingleChildScrollView(
@@ -196,20 +191,35 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
                       builder: (context, constraints) {
                         final category = _AdminFormField(
                           label: 'CATEGORY *',
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _category,
-                            items: _categories
-                                .map(
-                                  (category) => DropdownMenuItem(
-                                    value: category,
-                                    child: Text(category),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() => _category = value);
+                          child: FutureBuilder<List<String>>(
+                            future: _categoriesFuture,
+                            builder: (context, snapshot) {
+                              final categories =
+                                  snapshot.data ?? ScamCategories.values;
+                              if (!categories.contains(_category)) {
+                                _category = categories.first;
                               }
+
+                              return DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue: _category,
+                                items: categories
+                                    .map(
+                                      (category) => DropdownMenuItem(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _category = value);
+                                  }
+                                },
+                              );
                             },
                           ),
                         );

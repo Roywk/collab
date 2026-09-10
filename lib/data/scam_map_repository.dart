@@ -21,6 +21,26 @@ class ScamMapRepository {
   final SupabaseClient client;
   final ScamMapCache cache;
 
+  Future<List<String>> getActiveCategories() async {
+    try {
+      final response = await client
+          .from('scam_categories')
+          .select('name')
+          .eq('is_active', true)
+          .order('display_order')
+          .order('name');
+
+      final categories = (response as List)
+          .map((row) => (row as Map)['name']?.toString().trim() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+
+      return categories.isEmpty ? ScamCategories.values : categories;
+    } catch (_) {
+      return ScamCategories.values;
+    }
+  }
+
   Future<ScamMapLoadResult> getActiveScamReports() async {
     try {
       final response = await client.rpc('get_scam_map_reports');
@@ -54,6 +74,7 @@ class ScamMapRepository {
           'longitude, verification_status, reported_at, location_name, '
           'is_official, source_reference, is_active',
         )
+        .eq('is_active', true)
         .inFilter('verification_status', ['Verified', 'Pending'])
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)

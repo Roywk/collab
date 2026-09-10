@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
-import 'threat_database_screen.dart';
+import 'admin_scam_overview_screen.dart';
 
 class AdminGate extends StatefulWidget {
   const AdminGate({required this.repository, super.key});
@@ -53,7 +53,7 @@ class _AdminGateState extends State<AdminGate> {
         }
 
         if (snapshot.data == true) {
-          return ThreatDatabaseScreen(
+          return AdminScamOverviewScreen(
             repository: widget.repository,
             onSignOut: adminSignedOut,
           );

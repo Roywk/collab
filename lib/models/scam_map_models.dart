@@ -1,3 +1,33 @@
+abstract final class ScamCategories {
+  static const currencyExchange = 'Currency Exchange Scam';
+  static const taxi = 'Taxi Scam';
+  static const pickpocket = 'Pickpocket';
+  static const overcharging = 'Overcharging';
+  static const photo = 'Photo Scam';
+  static const transport = 'Transport Scam';
+  static const qrCodeFraud = 'QR Code Fraud';
+  static const giftCard = 'Gift Card Scam';
+  static const fakeServices = 'Fake Services';
+  static const phishing = 'Phishing';
+  static const serviceComplaint = 'Service Complaint';
+  static const other = 'Other';
+
+  static const values = <String>[
+    currencyExchange,
+    taxi,
+    pickpocket,
+    overcharging,
+    photo,
+    transport,
+    qrCodeFraud,
+    giftCard,
+    fakeServices,
+    phishing,
+    serviceComplaint,
+    other,
+  ];
+}
+
 enum ScamVerificationStatus { verified, pending }
 
 extension ScamVerificationStatusExtension on ScamVerificationStatus {

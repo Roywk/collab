@@ -78,16 +78,29 @@ Module 1 now provides:
 - landmark/location search, category filters, and marker detail sheets;
 - SQLite caching of scam data and automatic caching of viewed map tiles;
 - an admin form for publishing official Verified scam cases;
+- a Module 1 admin overview with live map-ready, Verified, Pending, official,
+  category, and recent-case analytics;
 - admin-only Pending report visibility in threat analytics;
+- canonical scam categories loaded from Supabase with an offline fallback;
 - coordinate validation with a map preview;
 - threat-density analytics with PDF and CSV export.
 
 ## Supabase setup
 
-Before running Module 1, execute
-`supabase/migrations/202608240001_module_1_scam_map.sql` in the Supabase SQL
-Editor. The migration adds the map fields, indexes, coordinate constraints, and
-row-level security policies used by the app.
+For a fresh database, run the Module 1 migrations in timestamp order. Existing
+projects that already ran the original map migration should run only the newer
+files that have not yet been applied:
+
+1. `supabase/migrations/202608240001_module_1_scam_map.sql`
+2. `supabase/migrations/202609100001_module_1_admin_compatibility.sql`
+3. `supabase/migrations/202609100002_module_1_scam_categories.sql`
+
+The category migration creates the shared list used by the official-case form;
+it does not change the category text stored on existing reports. For a labelled
+academic demonstration, optionally run
+`supabase/seeds/202609100001_module_1_demo_hotspots.sql`. The seed adds eight
+Verified markers and one admin-only Pending case and does not duplicate its rows
+when rerun.
 
 The tourist flow uses Supabase email/password accounts. Anonymous sign-in is no
 longer required.

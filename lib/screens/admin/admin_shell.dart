@@ -10,6 +10,7 @@ class AdminShell extends StatelessWidget {
     this.searchController,
     this.onSearchChanged,
     this.selectedMenuItem = 'Threat Database',
+    this.onOpenDashboard,
     this.onOpenHeatmap,
     this.onPublishScamCase,
     this.onOpenThreatDatabase,
@@ -26,6 +27,7 @@ class AdminShell extends StatelessWidget {
   final TextEditingController? searchController;
   final ValueChanged<String>? onSearchChanged;
   final String selectedMenuItem;
+  final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onPublishScamCase;
   final VoidCallback? onOpenThreatDatabase;
@@ -79,6 +81,7 @@ class AdminShell extends StatelessWidget {
                       child: AdminSidebar(
                         onSignOut: onSignOut,
                         selectedMenuItem: selectedMenuItem,
+                        onOpenDashboard: onOpenDashboard,
                         onOpenHeatmap: onOpenHeatmap,
                         onPublishScamCase: onPublishScamCase,
                         onOpenThreatDatabase: onOpenThreatDatabase,
@@ -101,6 +104,7 @@ class AdminShell extends StatelessWidget {
                 child: AdminSidebar(
                   onSignOut: onSignOut,
                   selectedMenuItem: selectedMenuItem,
+                  onOpenDashboard: onOpenDashboard,
                   onOpenHeatmap: onOpenHeatmap,
                   onPublishScamCase: onPublishScamCase,
                   onOpenThreatDatabase: onOpenThreatDatabase,
@@ -217,6 +221,7 @@ class AdminSidebar extends StatelessWidget {
   const AdminSidebar({
     this.onSignOut,
     this.selectedMenuItem = 'Scam Moderation',
+    this.onOpenDashboard,
     this.onOpenHeatmap,
     this.onPublishScamCase,
     this.onOpenThreatDatabase,
@@ -227,6 +232,7 @@ class AdminSidebar extends StatelessWidget {
 
   final VoidCallback? onSignOut;
   final String selectedMenuItem;
+  final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onPublishScamCase;
   final VoidCallback? onOpenThreatDatabase;
@@ -304,6 +310,12 @@ class AdminSidebar extends StatelessWidget {
                 child: ListTile(
                   onTap: () {
                     switch (item.$2) {
+                      case 'Dashboard Overview':
+                        onOpenDashboard?.call();
+                        break;
+                      case 'Scam Report Moderation':
+                        onPublishScamCase?.call();
+                        break;
                       case 'Geospatial Heatmap':
                         onOpenHeatmap?.call();
                         break;

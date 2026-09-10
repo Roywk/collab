@@ -19,11 +19,13 @@ class ThreatDatabaseScreen extends StatefulWidget {
   const ThreatDatabaseScreen({
     required this.repository,
     required this.onSignOut,
+    this.onOpenDashboard,
     super.key,
   });
 
   final AdminRepository repository;
   final Future<void> Function() onSignOut;
+  final VoidCallback? onOpenDashboard;
 
   @override
   State<ThreatDatabaseScreen> createState() {
@@ -240,6 +242,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
     return AdminShell(
       selectedMenuItem: 'Threat Database',
       headerTitle: 'Threat Database Management',
+      onOpenDashboard: widget.onOpenDashboard,
       onOpenHeatmap: openThreatHeatmap,
       onPublishScamCase: openManualScamCase,
       onOpenThreatDatabase: () {},
