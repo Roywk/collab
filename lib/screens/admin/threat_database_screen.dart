@@ -238,7 +238,8 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Scam Moderation',
+      selectedMenuItem: 'Threat Database',
+      headerTitle: 'Threat Database Management',
       onOpenHeatmap: openThreatHeatmap,
       onPublishScamCase: openManualScamCase,
       onOpenThreatDatabase: () {},

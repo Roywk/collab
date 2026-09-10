@@ -43,6 +43,7 @@ class ThreatRecord {
     this.registrationStatus,
     this.reportCount = 0,
     this.riskPoints = 0,
+    this.matchDistance = 0,
     this.evidenceNotes,
     this.policeReportReference,
     this.updatedAt,
@@ -65,6 +66,7 @@ class ThreatRecord {
 
   final int reportCount;
   final int riskPoints;
+  final int matchDistance;
 
   final String? evidenceNotes;
   final String? policeReportReference;
@@ -85,6 +87,7 @@ class ThreatRecord {
     String? registrationStatus,
     int? reportCount,
     int? riskPoints,
+    int? matchDistance,
     String? evidenceNotes,
     String? policeReportReference,
     DateTime? updatedAt,
@@ -104,6 +107,7 @@ class ThreatRecord {
       registrationStatus: registrationStatus ?? this.registrationStatus,
       reportCount: reportCount ?? this.reportCount,
       riskPoints: riskPoints ?? this.riskPoints,
+      matchDistance: matchDistance ?? this.matchDistance,
       evidenceNotes: evidenceNotes ?? this.evidenceNotes,
       policeReportReference:
           policeReportReference ?? this.policeReportReference,

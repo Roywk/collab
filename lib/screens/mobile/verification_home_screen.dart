@@ -195,7 +195,46 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
             'deceptive traders.',
             style: TextStyle(color: AppColors.slate, fontSize: 13),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          SurfaceCard(
+            color: AppColors.blueSoft,
+            borderColor: AppColors.blue,
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.manage_search_rounded, color: AppColors.blue),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Smart Verification',
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Search by business name, phone, email or URL. '
+                        'Small spelling mistakes are checked using fuzzy matching.',
+                        style: TextStyle(
+                          color: AppColors.slate,
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
 
           TextField(
             controller: queryController,

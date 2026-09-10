@@ -110,6 +110,7 @@ class VerificationRepository {
         registrationStatus: data['registration_status']?.toString(),
         reportCount: _toInteger(data['report_count']),
         riskPoints: _toInteger(data['risk_points']),
+        matchDistance: _toInteger(data['match_distance']),
         riskLevel: RiskLevelExtension.fromText(
           data['calculated_risk']?.toString(),
         ),
