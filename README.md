@@ -6,11 +6,12 @@ Flutter tourist-safety application with a Supabase-backed web/admin interface.
 
 Module 1 now provides:
 
-- an OpenStreetMap scam map with Verified/Pending markers and clustering;
+- an OpenStreetMap scam map with Verified public markers and clustering;
 - live GPS tracking and Haversine-based warnings within 200 metres;
 - landmark/location search, category filters, and marker detail sheets;
 - SQLite caching of scam data and automatic caching of viewed map tiles;
 - an admin form for publishing official Verified scam cases;
+- admin-only Pending report visibility in threat analytics;
 - coordinate validation with a map preview;
 - threat-density analytics with PDF and CSV export.
 

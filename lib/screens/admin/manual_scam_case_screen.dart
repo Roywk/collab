@@ -78,6 +78,19 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
     return null;
   }
 
+  String? _validatePublicSource(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+
+    final uri = Uri.tryParse(text);
+    if (uri == null ||
+        !uri.hasAuthority ||
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
+      return 'Enter a public http:// or https:// URL';
+    }
+    return null;
+  }
+
   Future<void> _publish() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -201,12 +214,16 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
                           ),
                         );
                         final source = _AdminFormField(
-                          label: 'SOURCE / PDRM REFERENCE',
+                          label: 'PUBLIC SOURCE URL',
                           child: TextFormField(
                             controller: _sourceController,
                             decoration: const InputDecoration(
-                              hintText: 'e.g. PDRM/KL/2026/08942',
+                              hintText: 'https://www.rmp.gov.my/...',
+                              helperText:
+                                  'Public news or official-source links only',
                             ),
+                            keyboardType: TextInputType.url,
+                            validator: _validatePublicSource,
                           ),
                         );
 

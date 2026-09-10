@@ -472,7 +472,6 @@ class ScamStatusLegend extends StatelessWidget {
           ),
           SizedBox(height: 4),
           _LegendRow(color: AppColors.red, label: 'Verified Alerts'),
-          _LegendRow(color: AppColors.amber, label: 'Pending Verification'),
         ],
       ),
     );
