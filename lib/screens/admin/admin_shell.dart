@@ -9,9 +9,12 @@ class AdminShell extends StatelessWidget {
     this.onSignOut,
     this.searchController,
     this.onSearchChanged,
-    this.selectedMenuItem = 'Scam Moderation',
+    this.selectedMenuItem = 'Threat Database',
     this.onOpenDashboard,
     this.onOpenReports,
+    this.onOpenHeatmap,
+    this.onOpenPublishScamCase,
+    this.onOpenVerifiedMerchants,
     this.onOpenHeatmap,
     this.onOpenPublishScamCase,
     this.onOpenVerifiedMerchants,
@@ -20,7 +23,8 @@ class AdminShell extends StatelessWidget {
     this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
-    this.headerTitle,
+    this.onOpenAwareness,
+    this.headerTitle = 'Scam & Threat Database',
     this.showTopBar = true,
     super.key,
   });
@@ -42,8 +46,8 @@ class AdminShell extends StatelessWidget {
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
-
-  final String? headerTitle;
+  final VoidCallback? onOpenAwareness;
+  final String headerTitle;
   final bool showTopBar;
 
   @override
@@ -106,6 +110,7 @@ class AdminShell extends StatelessWidget {
                         onOpenSettings: onOpenSettings,
                         onOpenBankHotlines: onOpenBankHotlines,
                         onOpenEmergencyFacilities: onOpenEmergencyFacilities,
+                        onOpenAwareness: onOpenAwareness,
                       ),
                     ),
                   )
@@ -133,6 +138,7 @@ class AdminShell extends StatelessWidget {
                   onOpenSettings: onOpenSettings,
                   onOpenBankHotlines: onOpenBankHotlines,
                   onOpenEmergencyFacilities: onOpenEmergencyFacilities,
+                  onOpenAwareness: onOpenAwareness,
                 ),
               ),
               Expanded(
@@ -234,6 +240,7 @@ class AdminSidebar extends StatelessWidget {
     this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
+    this.onOpenAwareness,
     super.key,
   });
 
@@ -249,12 +256,15 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
+  final VoidCallback? onOpenAwareness;
 
   @override
   Widget build(BuildContext context) {
     const menuItems = [
       (Icons.dashboard_outlined, 'Dashboard Overview'),
+      (Icons.fact_check_outlined, 'Scam Report Moderation'),
       (Icons.report_gmailerrorred_outlined, 'Reports Moderation'),
+      (Icons.shield_outlined, 'Threat Database'),
       (Icons.flag_outlined, 'Scam Moderation'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
       (Icons.verified_outlined, 'Verified Merchants'),
@@ -310,13 +320,11 @@ class AdminSidebar extends StatelessWidget {
           for (final item in menuItems)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: item.$2 == selectedMenuItem
-                      ? AppColors.blue
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                ),
+              child: Material(
+                color: item.$2 == selectedMenuItem
+                    ? AppColors.blue
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
                 child: ListTile(
                   onTap: () {
                     switch (item.$2) {
@@ -326,7 +334,7 @@ class AdminSidebar extends StatelessWidget {
                       case 'Reports Moderation':
                         onOpenReports?.call();
                         break;
-                      case 'Scam Moderation':
+                      case 'Threat Database':
                         onOpenThreatDatabase?.call();
                         break;
                       case 'Geospatial Heatmap':
@@ -342,10 +350,17 @@ class AdminSidebar extends StatelessWidget {
                         onOpenEmergencyFacilities?.call();
                         break;
                       case 'Awareness CMS':
-                        onOpenAwarenessCms?.call();
+                        if (onOpenAwareness != null) {
+                          onOpenAwareness!.call();
+                        } else if (onOpenAwarenessCms != null) {
+                          onOpenAwarenessCms!.call();
+                        } else {
+                          Navigator.of(context).pushNamed('/admin/awareness');
+                        }
                         break;
                       case 'System Logs & Settings':
                         onOpenSettings?.call();
+                        break;
                         break;
                     }
                   },

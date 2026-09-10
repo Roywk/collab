@@ -497,6 +497,7 @@ class _FacilityDropdown extends StatelessWidget {
     return DropdownButtonFormField<String>(
       initialValue: value,
       isDense: true,
+      isExpanded: true,
       decoration: InputDecoration(
         prefixText: '$prefix:  ',
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),

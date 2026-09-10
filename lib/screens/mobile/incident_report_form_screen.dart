@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../core/app_theme.dart';
 import '../../data/incident_report_repository.dart';
 import '../../models/incident_report_models.dart';
+import '../../services/address_lookup_service.dart';
+import '../../services/location_service.dart';
+import 'incident_location_picker_screen.dart';
 import 'incident_report_verify_screen.dart';
 import 'incident_report_widgets.dart';
 
@@ -19,6 +22,8 @@ class IncidentReportFormScreen extends StatefulWidget {
 
 class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _addressLookupService = AddressLookupService();
+  final _locationService = LocationService();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _peopleController = TextEditingController();
@@ -28,9 +33,11 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
   String? _incidentType;
   DateTime? _incidentAt;
   ReportInputLanguage _inputLanguage = ReportInputLanguage.english;
+  bool _isLocating = false;
 
   @override
   void dispose() {
+    _addressLookupService.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
     _peopleController.dispose();
@@ -68,6 +75,114 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
         time.minute,
       );
     });
+  }
+
+  Future<void> _useCurrentLocation() async {
+    if (_isLocating) {
+      return;
+    }
+
+    setState(() => _isLocating = true);
+    try {
+      final position = await _locationService.currentPosition();
+      if (!mounted) {
+        return;
+      }
+
+      final coordinateLabel =
+          '${position.latitude.toStringAsFixed(6)}, '
+          '${position.longitude.toStringAsFixed(6)}';
+      _locationController.text = 'Current location ($coordinateLabel)';
+      _formKey.currentState?.validate();
+
+      final address = await _addressLookupService.addressFromCoordinates(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (address != null) {
+        _locationController.text = '$address ($coordinateLabel)';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            address == null
+                ? 'Precise GPS location added. The street address could not be found.'
+                : 'Current address added to the report.',
+          ),
+        ),
+      );
+    } on LocationUnavailableException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to get your location. Check your location permission and try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
+    }
+  }
+
+  Future<void> _chooseLocationOnMap() async {
+    if (_isLocating) return;
+
+    setState(() => _isLocating = true);
+    try {
+      final position = await _locationService.currentPosition();
+      if (!mounted) return;
+
+      setState(() => _isLocating = false);
+      final selection = await Navigator.of(context).push<IncidentMapLocation>(
+        MaterialPageRoute<IncidentMapLocation>(
+          builder: (_) => IncidentLocationPickerScreen(
+            initialLatitude: position.latitude,
+            initialLongitude: position.longitude,
+          ),
+        ),
+      );
+      if (!mounted || selection == null) return;
+
+      setState(() => _locationController.text = selection.reportLabel);
+      _formKey.currentState?.validate();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Map location added to the report.')),
+      );
+    } on LocationUnavailableException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to open the map. Check your location permission and try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted && _isLocating) {
+        setState(() => _isLocating = false);
+      }
+    }
   }
 
   void _reviewReport() {
@@ -171,10 +286,42 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
             TextFormField(
               controller: _locationController,
               validator: _requiredText,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Enter incident location',
-                prefixIcon: Icon(Icons.location_on_outlined, size: 19),
+                helperText: 'Target: use GPS • Map: select another place',
+                prefixIcon: IconButton(
+                  key: const Key('incident-current-location-button'),
+                  tooltip: 'Use current location',
+                  onPressed: _isLocating ? null : _useCurrentLocation,
+                  icon: _isLocating
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location_rounded, size: 19),
+                ),
+                suffixIconConstraints: const BoxConstraints(minWidth: 48),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      key: const Key('incident-map-location-button'),
+                      tooltip: 'Choose location on map',
+                      onPressed: _isLocating ? null : _chooseLocationOnMap,
+                      icon: const Icon(Icons.map_outlined, size: 19),
+                    ),
+                    if (_locationController.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Clear location',
+                        onPressed: () {
+                          setState(_locationController.clear);
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+                  ],
+                ),
               ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 14),
             const ReportFieldLabel('Description', required: true),

@@ -254,7 +254,10 @@ class VisitBottomNavigation extends StatelessWidget {
               Navigator.of(context).pushNamed('/emergency');
             }
           },
-      onLearn,
+      onLearn ??
+          () {
+            if (currentIndex != 5) Navigator.of(context).pushNamed('/learn');
+          },
       onProfile ?? () => Navigator.of(context).pushNamed('/profile'),
     ];
 

@@ -261,15 +261,16 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Scam Moderation',
+      selectedMenuItem: 'Threat Database',
+      headerTitle: 'Threat Database Management',
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
-      onOpenHeatmap: widget.onOpenHeatmap,
+      onOpenHeatmap: openThreatHeatmap,
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
-      onOpenThreatDatabase: widget.onOpenThreatDatabase,
+      onOpenThreatDatabase: () {},
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
       onOpenSettings: widget.onOpenSettings,
-      onOpenPublishScamCase: widget.onOpenPublishScamCase,
+      onOpenPublishScamCase: openManualScamCase,
       onOpenBankHotlines: openBankHotlineManagement,
       onOpenEmergencyFacilities: openEmergencyFacilityManagement,
       searchController: searchController,

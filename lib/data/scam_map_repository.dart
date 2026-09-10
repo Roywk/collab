@@ -23,35 +23,49 @@ class ScamMapRepository {
 
   Future<ScamMapLoadResult> getActiveScamReports() async {
     try {
-      final response = await client
-          .from('scam_reports')
-          .select(
-            'id, report_code, title, category, description, latitude, '
-            'longitude, verification_status, reported_at, location_name, '
-            'is_official, source_reference, is_active',
-          )
-          .eq('is_active', true)
-          .inFilter('verification_status', ['Verified', 'Pending'])
-          .not('latitude', 'is', null)
-          .not('longitude', 'is', null)
-          .order('reported_at', ascending: false);
+      final response = await client.rpc('get_scam_map_reports');
 
       final reports = (response as List)
           .map(
             (row) =>
                 ScamMapReport.fromMap(Map<String, dynamic>.from(row as Map)),
           )
+          .where((report) => report.isVerified)
           .toList();
 
       await cache.replaceReports(reports);
       return ScamMapLoadResult(reports: reports, loadedFromCache: false);
     } catch (_) {
-      final cachedReports = await cache.readReports();
+      final cachedReports = (await cache.readReports())
+          .where((report) => report.isVerified)
+          .toList();
       if (cachedReports.isNotEmpty) {
         return ScamMapLoadResult(reports: cachedReports, loadedFromCache: true);
       }
       rethrow;
     }
+  }
+
+  Future<ScamMapLoadResult> getThreatAnalyticsReports() async {
+    final response = await client
+        .from('scam_reports')
+        .select(
+          'id, report_code, title, category, description, latitude, '
+          'longitude, verification_status, reported_at, location_name, '
+          'is_official, source_reference, is_active',
+        )
+        .inFilter('verification_status', ['Verified', 'Pending'])
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .order('reported_at', ascending: false);
+
+    final reports = (response as List)
+        .map(
+          (row) => ScamMapReport.fromMap(Map<String, dynamic>.from(row as Map)),
+        )
+        .toList();
+
+    return ScamMapLoadResult(reports: reports, loadedFromCache: false);
   }
 
   Future<ScamMapReport> publishOfficialCase(ManualScamCase scamCase) async {
@@ -61,13 +75,10 @@ class ScamMapRepository {
     }
 
     final publishedAt = DateTime.now();
-    final reportCode =
-        'SCAM-${publishedAt.microsecondsSinceEpoch.toRadixString(36).toUpperCase()}';
 
     final inserted = await client
         .from('scam_reports')
         .insert({
-          'report_code': reportCode,
           'title': scamCase.title.trim(),
           'category': scamCase.category,
           'description': scamCase.description.trim(),
@@ -78,7 +89,6 @@ class ScamMapRepository {
           'verification_status': 'Verified',
           'is_official': true,
           'is_active': true,
-          'published_by': user.id,
           'reported_at': publishedAt.toIso8601String(),
         })
         .select(

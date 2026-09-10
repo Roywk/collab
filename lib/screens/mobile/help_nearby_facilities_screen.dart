@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +10,7 @@ import '../../core/app_widgets.dart';
 import '../../core/haversine.dart';
 import '../../data/help_nearby_repository.dart';
 import '../../models/help_nearby_models.dart';
+import '../../services/address_lookup_service.dart';
 import 'help_nearby_detail_screen.dart';
 import 'help_nearby_widgets.dart';
 
@@ -28,23 +31,40 @@ class HelpNearbyFacilitiesScreen extends StatefulWidget {
 
 class _HelpNearbyFacilitiesScreenState
     extends State<HelpNearbyFacilitiesScreen> {
+  final AddressLookupService _addressLookupService = AddressLookupService();
   final TextEditingController _searchController = TextEditingController();
   List<NearbyFacility> _facilities = const [];
   EmergencyFacilityType? _selectedType;
   String _query = '';
   String? _error;
+  String? _currentAddress;
+  bool _loadingAddress = true;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _loadFacilities();
+    unawaited(_loadCurrentAddress());
   }
 
   @override
   void dispose() {
+    _addressLookupService.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrentAddress() async {
+    final address = await _addressLookupService.addressFromCoordinates(
+      latitude: widget.position.latitude,
+      longitude: widget.position.longitude,
+    );
+    if (!mounted) return;
+    setState(() {
+      _currentAddress = address;
+      _loadingAddress = false;
+    });
   }
 
   Future<void> _loadFacilities() async {
@@ -128,19 +148,48 @@ class _HelpNearbyFacilitiesScreenState
                 border: Border.all(color: AppColors.green),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.circle, color: AppColors.green, size: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 3),
+                    child: Icon(Icons.circle, color: AppColors.green, size: 8),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Current location • '
-                      '${widget.position.latitude.toStringAsFixed(4)}, '
-                      '${widget.position.longitude.toStringAsFixed(4)}',
-                      style: const TextStyle(
-                        color: AppColors.green,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _loadingAddress
+                              ? 'Finding your current address...'
+                              : _currentAddress ?? 'Current GPS location',
+                          style: const TextStyle(
+                            color: AppColors.green,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${widget.position.latitude.toStringAsFixed(6)}, '
+                          '${widget.position.longitude.toStringAsFixed(6)}',
+                          style: const TextStyle(
+                            color: AppColors.slate,
+                            fontSize: 8,
+                          ),
+                        ),
+                        if (!_loadingAddress && _currentAddress != null) ...[
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Address © OpenStreetMap contributors',
+                            style: TextStyle(
+                              color: AppColors.slate,
+                              fontSize: 7,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
