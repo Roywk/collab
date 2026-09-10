@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
+import '../../core/haversine.dart';
 import '../../data/scam_map_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/threat_export_service.dart';
@@ -111,21 +112,23 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
           final analytics = ScamThreatAnalytics.fromReports(reports);
           final hotspots = analytics.locationCounts.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value));
+          final categories = analytics.categoryCounts.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
           return ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             children: [
               const Text(
                 'Threat Heatmap Analytics',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Nationwide scam density visualization from active incident data.',
+                'Verified and pending scam activity within Kuala Lumpur.',
                 style: TextStyle(color: AppColors.slate, fontSize: 12),
               ),
               if (snapshot.data?.loadedFromCache == true) ...[
@@ -139,7 +142,7 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -167,7 +170,13 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
+              _InsightStrip(
+                analytics: analytics,
+                topCategory: categories.firstOrNull,
+                topHotspot: hotspots.firstOrNull,
+              ),
+              const SizedBox(height: 12),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final map = _HeatmapPanel(
@@ -178,13 +187,25 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                     onExportCsv: () => _export(reports, asPdf: false),
                     onExportPdf: () => _export(reports, asPdf: true),
                   );
-                  final leaderboard = _HotspotLeaderboard(
-                    entries: hotspots.take(8).toList(),
+                  final analyticsPanels = Column(
+                    children: [
+                      _HotspotLeaderboard(entries: hotspots.take(5).toList()),
+                      const SizedBox(height: 12),
+                      _BreakdownChart(
+                        title: 'Scams by Category',
+                        entries: categories.take(5).toList(),
+                        total: analytics.totalReports,
+                      ),
+                    ],
                   );
 
                   if (constraints.maxWidth < 850) {
                     return Column(
-                      children: [map, const SizedBox(height: 16), leaderboard],
+                      children: [
+                        map,
+                        const SizedBox(height: 12),
+                        analyticsPanels,
+                      ],
                     );
                   }
                   return Row(
@@ -192,7 +213,7 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                     children: [
                       Expanded(flex: 3, child: map),
                       const SizedBox(width: 16),
-                      Expanded(child: leaderboard),
+                      SizedBox(width: 330, child: analyticsPanels),
                     ],
                   );
                 },
@@ -200,6 +221,93 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _InsightStrip extends StatelessWidget {
+  const _InsightStrip({
+    required this.analytics,
+    required this.topCategory,
+    required this.topHotspot,
+  });
+
+  final ScamThreatAnalytics analytics;
+  final MapEntry<String, int>? topCategory;
+  final MapEntry<String, int>? topHotspot;
+
+  @override
+  Widget build(BuildContext context) {
+    final verificationRate = analytics.totalReports == 0
+        ? 0
+        : (analytics.verifiedReports / analytics.totalReports * 100).round();
+    return SurfaceCard(
+      child: Wrap(
+        spacing: 28,
+        runSpacing: 10,
+        children: [
+          _Insight(
+            icon: Icons.verified_outlined,
+            label: 'Verification rate',
+            value: '$verificationRate%',
+          ),
+          _Insight(
+            icon: Icons.location_on_outlined,
+            label: 'Highest activity area',
+            value: topHotspot?.key ?? 'No data',
+          ),
+          _Insight(
+            icon: Icons.category_outlined,
+            label: 'Most reported category',
+            value: topCategory?.key ?? 'No data',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Insight extends StatelessWidget {
+  const _Insight({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 230,
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.blue, size: 20),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: AppColors.slate, fontSize: 10),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -219,8 +327,8 @@ class _AnalyticsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 190,
-      padding: const EdgeInsets.all(16),
+      width: 160,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: AppColors.line),
@@ -238,10 +346,84 @@ class _AnalyticsCard extends StatelessWidget {
             value,
             style: TextStyle(
               color: color,
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BreakdownChart extends StatelessWidget {
+  const _BreakdownChart({
+    required this.title,
+    required this.entries,
+    required this.total,
+  });
+
+  final String title;
+  final List<MapEntry<String, int>> entries;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final maximum = entries.isEmpty ? 1 : entries.first.value;
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.navy,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '$total reports in selected period',
+            style: const TextStyle(color: AppColors.slate, fontSize: 10),
+          ),
+          const SizedBox(height: 12),
+          if (entries.isEmpty)
+            const Text('No category data are available.')
+          else
+            for (final entry in entries) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.key,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  Text(
+                    '${entry.value}',
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: LinearProgressIndicator(
+                  minHeight: 7,
+                  value: entry.value / maximum,
+                  backgroundColor: AppColors.canvas,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
         ],
       ),
     );
@@ -281,7 +463,7 @@ class _HeatmapPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Malaysia Threat Density Map',
+                    'Kuala Lumpur Threat Density Map',
                     style: TextStyle(
                       color: AppColors.navy,
                       fontSize: 14,
@@ -308,15 +490,27 @@ class _HeatmapPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 470,
+            height: 360,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: FlutterMap(
-                options: const MapOptions(
-                  initialCenter: LatLng(4.2105, 101.9758),
-                  initialZoom: 6,
-                  minZoom: 5,
+                options: MapOptions(
+                  initialCenter: const LatLng(3.1390, 101.6869),
+                  initialZoom: 12,
+                  minZoom: 11,
                   maxZoom: 15,
+                  cameraConstraint: CameraConstraint.contain(
+                    bounds: LatLngBounds(
+                      const LatLng(
+                        kualaLumpurMinimumLatitude,
+                        kualaLumpurMinimumLongitude,
+                      ),
+                      const LatLng(
+                        kualaLumpurMaximumLatitude,
+                        kualaLumpurMaximumLongitude,
+                      ),
+                    ),
+                  ),
                 ),
                 children: [
                   TileLayer(

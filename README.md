@@ -73,7 +73,8 @@ require a Google Maps API key.
 
 Module 1 now provides:
 
-- an OpenStreetMap scam map with Verified public markers and clustering;
+- a Kuala Lumpur OpenStreetMap scam map with Verified public markers and
+  clustering;
 - live GPS tracking and Haversine-based warnings within 200 metres;
 - landmark/location search, category filters, and marker detail sheets;
 - SQLite caching of scam data and automatic caching of viewed map tiles;
@@ -94,13 +95,14 @@ files that have not yet been applied:
 1. `supabase/migrations/202608240001_module_1_scam_map.sql`
 2. `supabase/migrations/202609100001_module_1_admin_compatibility.sql`
 3. `supabase/migrations/202609100002_module_1_scam_categories.sql`
+4. `supabase/migrations/202609110001_module_1_kuala_lumpur_scope.sql`
 
 The category migration creates the shared list used by the official-case form;
 it does not change the category text stored on existing reports. For a labelled
 academic demonstration, optionally run
 `supabase/seeds/202609100001_module_1_demo_hotspots.sql`. The seed adds eight
-Verified markers and one admin-only Pending case and does not duplicate its rows
-when rerun.
+Kuala Lumpur Verified markers and one Kuala Lumpur admin-only Pending case and
+does not duplicate its rows when rerun.
 
 The tourist flow uses Supabase email/password accounts. Anonymous sign-in is no
 longer required.

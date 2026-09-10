@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/haversine.dart';
 import '../models/scam_map_models.dart';
 import 'scam_map_cache.dart';
 
@@ -43,21 +44,34 @@ class ScamMapRepository {
 
   Future<ScamMapLoadResult> getActiveScamReports() async {
     try {
-      final response = await client.rpc('get_scam_map_reports');
+      dynamic response;
+      try {
+        response = await client.rpc('get_scam_map_reports_v2');
+      } catch (_) {
+        response = await client.rpc('get_scam_map_reports');
+      }
 
       final reports = (response as List)
           .map(
             (row) =>
                 ScamMapReport.fromMap(Map<String, dynamic>.from(row as Map)),
           )
-          .where((report) => report.isVerified)
+          .where(
+            (report) =>
+                report.isVerified &&
+                isCoordinateInKualaLumpur(report.latitude, report.longitude),
+          )
           .toList();
 
       await cache.replaceReports(reports);
       return ScamMapLoadResult(reports: reports, loadedFromCache: false);
     } catch (_) {
       final cachedReports = (await cache.readReports())
-          .where((report) => report.isVerified)
+          .where(
+            (report) =>
+                report.isVerified &&
+                isCoordinateInKualaLumpur(report.latitude, report.longitude),
+          )
           .toList();
       if (cachedReports.isNotEmpty) {
         return ScamMapLoadResult(reports: cachedReports, loadedFromCache: true);
@@ -72,10 +86,14 @@ class ScamMapRepository {
         .select(
           'id, report_code, title, category, description, latitude, '
           'longitude, verification_status, reported_at, location_name, '
-          'is_official, source_reference, is_active',
+          'is_official, source_reference, is_active, evidence_urls, amount_lost',
         )
         .eq('is_active', true)
         .inFilter('verification_status', ['Verified', 'Pending'])
+        .gte('latitude', kualaLumpurMinimumLatitude)
+        .lte('latitude', kualaLumpurMaximumLatitude)
+        .gte('longitude', kualaLumpurMinimumLongitude)
+        .lte('longitude', kualaLumpurMaximumLongitude)
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
         .order('reported_at', ascending: false);

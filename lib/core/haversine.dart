@@ -2,6 +2,13 @@ import 'dart:math' as math;
 
 const double earthRadiusMeters = 6371000;
 
+// Rectangular operating boundary used by Visit 1MY's Kuala Lumpur pilot.
+// It intentionally covers DBKL and a small boundary tolerance for GPS drift.
+const double kualaLumpurMinimumLatitude = 3.03;
+const double kualaLumpurMaximumLatitude = 3.25;
+const double kualaLumpurMinimumLongitude = 101.60;
+const double kualaLumpurMaximumLongitude = 101.80;
+
 double haversineDistanceMeters({
   required double startLatitude,
   required double startLongitude,
@@ -25,14 +32,9 @@ double haversineDistanceMeters({
 
 double _toRadians(double degrees) => degrees * math.pi / 180;
 
-bool isCoordinateInMalaysia(double latitude, double longitude) {
-  const minimumLatitude = 0.85;
-  const maximumLatitude = 7.36;
-  const minimumLongitude = 99.64;
-  const maximumLongitude = 119.27;
-
-  return latitude >= minimumLatitude &&
-      latitude <= maximumLatitude &&
-      longitude >= minimumLongitude &&
-      longitude <= maximumLongitude;
+bool isCoordinateInKualaLumpur(double latitude, double longitude) {
+  return latitude >= kualaLumpurMinimumLatitude &&
+      latitude <= kualaLumpurMaximumLatitude &&
+      longitude >= kualaLumpurMinimumLongitude &&
+      longitude <= kualaLumpurMaximumLongitude;
 }

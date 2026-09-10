@@ -22,6 +22,8 @@ class ThreatExportService {
         'Longitude',
         'Reported At',
         'Official',
+        'Amount Lost (RM)',
+        'Evidence Count',
         'Source Reference',
       ],
       for (final report in reports)
@@ -30,11 +32,13 @@ class ThreatExportService {
           report.title,
           report.category,
           report.status.label,
-          report.locationName ?? '',
+          report.analyticsLocation,
           report.latitude,
           report.longitude,
           report.reportedAt.toIso8601String(),
           report.isOfficial ? 'Yes' : 'No',
+          report.amountLost ?? 0,
+          report.evidenceUrls.length,
           report.sourceReference ?? '',
         ],
     ];
@@ -50,6 +54,17 @@ class ThreatExportService {
 
   Future<String> exportPdf(List<ScamMapReport> reports) async {
     final analytics = ScamThreatAnalytics.fromReports(reports);
+    final categories = analytics.categoryCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final hotspots = analytics.locationCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalLoss = reports.fold<double>(
+      0,
+      (sum, report) => sum + (report.amountLost ?? 0),
+    );
+    final verificationRate = analytics.totalReports == 0
+        ? 0
+        : analytics.verifiedReports / analytics.totalReports * 100;
     final document = pw.Document(
       title: 'Visit 1MY Threat Analytics',
       author: 'Visit 1MY',
@@ -63,7 +78,7 @@ class ThreatExportService {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
-              'Visit 1MY - Threat Analytics',
+              'Visit 1MY - Kuala Lumpur Threat Analytics',
               style: pw.TextStyle(
                 fontSize: 20,
                 fontWeight: pw.FontWeight.bold,
@@ -92,37 +107,69 @@ class ThreatExportService {
               _summaryBox('Total reports', analytics.totalReports),
               _summaryBox('Verified', analytics.verifiedReports),
               _summaryBox('Pending', analytics.pendingReports),
-              _summaryBox('Locations', analytics.locationCounts.length),
+              _summaryBox('Hotspot areas', analytics.locationCounts.length),
             ],
           ),
           pw.SizedBox(height: 18),
           pw.Text(
-            'Incident records',
+            'Executive summary',
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Bullet(
+            text:
+                '${verificationRate.toStringAsFixed(0)}% of reports are verified.',
+          ),
+          pw.Bullet(
+            text: hotspots.isEmpty
+                ? 'No hotspot location data are available.'
+                : '${hotspots.first.key} has the highest activity (${hotspots.first.value} reports).',
+          ),
+          pw.Bullet(
+            text: categories.isEmpty
+                ? 'No category data are available.'
+                : '${categories.first.key} is the most reported scam type (${categories.first.value} reports).',
+          ),
+          pw.Bullet(
+            text:
+                'Total reported financial loss: RM ${NumberFormat('#,##0.00').format(totalLoss)}.',
+          ),
+          pw.SizedBox(height: 16),
+          _distributionChart(
+            'Reports by category',
+            categories.take(6).toList(),
+            PdfColors.blue700,
+          ),
+          pw.SizedBox(height: 16),
+          _distributionChart(
+            'Top hotspot areas',
+            hotspots.take(6).toList(),
+            PdfColors.red700,
+          ),
+          pw.SizedBox(height: 18),
+          pw.Text(
+            'Highest-impact cases',
             style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headers: const [
-              'Title',
-              'Category',
-              'Status',
-              'Location',
-              'Coordinates',
-              'Date',
-            ],
-            data: reports
-                .map(
-                  (report) => [
-                    report.title,
-                    report.category,
-                    report.status.label,
-                    report.locationName ?? '-',
-                    '${report.latitude.toStringAsFixed(5)}, '
-                        '${report.longitude.toStringAsFixed(5)}',
-                    DateFormat('dd MMM yyyy').format(report.reportedAt),
-                  ],
-                )
-                .toList(),
+            headers: const ['Title', 'Category', 'Area', 'Status', 'Loss (RM)'],
+            data:
+                (reports.toList()..sort(
+                      (a, b) =>
+                          (b.amountLost ?? 0).compareTo(a.amountLost ?? 0),
+                    ))
+                    .take(10)
+                    .map(
+                      (report) => [
+                        report.title,
+                        report.category,
+                        report.analyticsLocation,
+                        report.status.label,
+                        NumberFormat('#,##0.00').format(report.amountLost ?? 0),
+                      ],
+                    )
+                    .toList(),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.blue900),
             headerStyle: pw.TextStyle(
               color: PdfColors.white,
@@ -165,6 +212,61 @@ class ThreatExportService {
           ),
         ],
       ),
+    );
+  }
+
+  pw.Widget _distributionChart(
+    String title,
+    List<MapEntry<String, int>> entries,
+    PdfColor color,
+  ) {
+    final maximum = entries.isEmpty ? 1 : entries.first.value;
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          title,
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 7),
+        if (entries.isEmpty)
+          pw.Text('No data available.')
+        else
+          for (final entry in entries) ...[
+            pw.Row(
+              children: [
+                pw.SizedBox(
+                  width: 120,
+                  child: pw.Text(
+                    entry.key,
+                    maxLines: 1,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Container(
+                  width: 230,
+                  height: 8,
+                  color: PdfColors.grey200,
+                  alignment: pw.Alignment.centerLeft,
+                  child: pw.Container(
+                    width: 230 * entry.value / maximum,
+                    height: 8,
+                    color: color,
+                  ),
+                ),
+                pw.SizedBox(width: 8),
+                pw.Text(
+                  '${entry.value}',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 6),
+          ],
+      ],
     );
   }
 

@@ -50,12 +50,12 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   double? get _latitude => double.tryParse(_latitudeController.text.trim());
   double? get _longitude => double.tryParse(_longitudeController.text.trim());
 
-  bool get _coordinatesAreInMalaysia {
+  bool get _coordinatesAreInKualaLumpur {
     final latitude = _latitude;
     final longitude = _longitude;
     return latitude != null &&
         longitude != null &&
-        isCoordinateInMalaysia(latitude, longitude);
+        isCoordinateInKualaLumpur(latitude, longitude);
   }
 
   String? _validateCoordinate(String? value, {required bool latitude}) {
@@ -89,12 +89,12 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   Future<void> _publish() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (!_coordinatesAreInMalaysia) {
+    if (!_coordinatesAreInKualaLumpur) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Coordinates must be within Malaysian borders '
-            '(0.85°N-7.36°N, 99.64°E-119.27°E).',
+            'Coordinates must be within the Kuala Lumpur pilot area '
+            '(3.03°N-3.25°N, 101.60°E-101.80°E).',
           ),
         ),
       );
@@ -329,18 +329,18 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _coordinatesAreInMalaysia
-                          ? '● Valid — within Malaysian borders'
-                          : 'Malaysia bounds: 0.85°N-7.36°N, 99.64°E-119.27°E',
+                      _coordinatesAreInKualaLumpur
+                          ? '● Valid — within Kuala Lumpur'
+                          : 'KL bounds: 3.03°N-3.25°N, 101.60°E-101.80°E',
                       style: TextStyle(
-                        color: _coordinatesAreInMalaysia
+                        color: _coordinatesAreInKualaLumpur
                             ? AppColors.green
                             : AppColors.muted,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (_coordinatesAreInMalaysia) ...[
+                    if (_coordinatesAreInKualaLumpur) ...[
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),

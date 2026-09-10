@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:vibration/vibration.dart';
 
 import '../models/scam_map_models.dart';
 
@@ -30,31 +31,46 @@ class ScamAlertNotificationService {
     _initialized = true;
   }
 
-  Future<void> showNearbyHotspot(
-    ScamMapReport report,
-    double distanceMeters,
-  ) async {
+  Future<void> showNearbyHotspots({
+    required int count,
+    required ScamMapReport nearestReport,
+    required double nearestDistanceMeters,
+  }) async {
     if (kIsWeb) {
       return;
     }
 
+    try {
+      await Vibration.vibrate(duration: 1000, amplitude: 255);
+    } catch (_) {
+      // Some devices do not expose a vibration motor; the alert still appears.
+    }
+
     await initialize();
     await _plugin.show(
-      id: report.id.hashCode & 0x7fffffff,
-      title: 'Scam alert nearby',
-      body: '${report.title} is ${distanceMeters.round()}m away. Stay alert.',
-      notificationDetails: const NotificationDetails(
+      id: 1001,
+      title: count == 1
+          ? 'Verified scam hotspot nearby'
+          : '$count verified scam hotspots nearby',
+      body: count == 1
+          ? '${nearestReport.title} is ${nearestDistanceMeters.round()}m away. Stay alert.'
+          : 'The nearest is ${nearestDistanceMeters.round()}m away. Tap to view the list.',
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'verified_scam_hotspots',
+          'verified_scam_hotspots_v2',
           'Verified scam hotspot alerts',
           channelDescription:
               'High-priority warnings when approaching verified scam hotspots.',
           importance: Importance.max,
           priority: Priority.high,
+          enableVibration: false,
         ),
-        iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentSound: true,
+        ),
       ),
-      payload: report.id,
+      payload: nearestReport.id,
     );
   }
 }

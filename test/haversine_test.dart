@@ -27,13 +27,30 @@ void main() {
     });
   });
 
-  group('isCoordinateInMalaysia', () {
+  group('isCoordinateInKualaLumpur', () {
     test('accepts Kuala Lumpur coordinates', () {
-      expect(isCoordinateInMalaysia(3.1478, 101.7134), isTrue);
+      expect(isCoordinateInKualaLumpur(3.1478, 101.7134), isTrue);
     });
 
-    test('rejects coordinates outside the configured borders', () {
-      expect(isCoordinateInMalaysia(35.6762, 139.6503), isFalse);
+    test('rejects Malaysian coordinates outside Kuala Lumpur', () {
+      expect(isCoordinateInKualaLumpur(5.4141, 100.3292), isFalse);
+    });
+
+    test('accepts the configured Kuala Lumpur boundary', () {
+      expect(
+        isCoordinateInKualaLumpur(
+          kualaLumpurMinimumLatitude,
+          kualaLumpurMinimumLongitude,
+        ),
+        isTrue,
+      );
+      expect(
+        isCoordinateInKualaLumpur(
+          kualaLumpurMaximumLatitude,
+          kualaLumpurMaximumLongitude,
+        ),
+        isTrue,
+      );
     });
   });
 }
