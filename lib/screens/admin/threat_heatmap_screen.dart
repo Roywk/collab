@@ -49,7 +49,7 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   @override
   void initState() {
     super.initState();
-    _reportsFuture = widget.repository.getActiveScamReports();
+    _reportsFuture = widget.repository.getThreatAnalyticsReports();
   }
 
   List<ScamMapReport> _filterByDate(List<ScamMapReport> reports) {
@@ -123,7 +123,7 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                         onPressed: () {
                           setState(() {
                             _reportsFuture = widget.repository
-                                .getActiveScamReports();
+                                .getThreatAnalyticsReports();
                           });
                         },
                         child: const Text('Try Again'),

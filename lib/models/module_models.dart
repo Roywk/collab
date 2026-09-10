@@ -43,8 +43,8 @@ class ThreatRecord {
     this.registrationStatus,
     this.reportCount = 0,
     this.riskPoints = 0,
+    this.matchDistance = 0,
     this.evidenceNotes,
-    this.policeReportReference,
     this.updatedAt,
   });
 
@@ -65,9 +65,9 @@ class ThreatRecord {
 
   final int reportCount;
   final int riskPoints;
+  final int matchDistance;
 
   final String? evidenceNotes;
-  final String? policeReportReference;
   final DateTime? updatedAt;
 
   ThreatRecord copyWith({
@@ -85,8 +85,8 @@ class ThreatRecord {
     String? registrationStatus,
     int? reportCount,
     int? riskPoints,
+    int? matchDistance,
     String? evidenceNotes,
-    String? policeReportReference,
     DateTime? updatedAt,
   }) {
     return ThreatRecord(
@@ -104,9 +104,8 @@ class ThreatRecord {
       registrationStatus: registrationStatus ?? this.registrationStatus,
       reportCount: reportCount ?? this.reportCount,
       riskPoints: riskPoints ?? this.riskPoints,
+      matchDistance: matchDistance ?? this.matchDistance,
       evidenceNotes: evidenceNotes ?? this.evidenceNotes,
-      policeReportReference:
-          policeReportReference ?? this.policeReportReference,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -142,20 +141,63 @@ class RecentSearch {
   final String query;
 }
 
+enum QrVerdict { safe, suspicious, highRisk, invalid, unknown }
+
+extension QrVerdictExtension on QrVerdict {
+  String get label {
+    switch (this) {
+      case QrVerdict.safe:
+        return 'No Known Threat Detected';
+      case QrVerdict.suspicious:
+        return 'Caution Recommended';
+      case QrVerdict.highRisk:
+        return 'High-Risk Destination';
+      case QrVerdict.invalid:
+        return 'Invalid QR Destination';
+      case QrVerdict.unknown:
+        return 'Verification Incomplete';
+    }
+  }
+
+  String? get historyStatus {
+    switch (this) {
+      case QrVerdict.safe:
+        return 'Safe';
+      case QrVerdict.suspicious:
+        return 'Suspicious';
+      case QrVerdict.highRisk:
+        return 'High Risk';
+      case QrVerdict.invalid:
+      case QrVerdict.unknown:
+        return null;
+    }
+  }
+}
+
 class QrVerificationResult {
   const QrVerificationResult({
     required this.rawValue,
-    required this.isSafe,
+    required this.verdict,
     required this.connectionDetail,
     required this.domainDetail,
     required this.phishingDetail,
+    required this.databaseDetail,
+    required this.reasons,
     this.merchantName,
+    this.threatRecordId,
   });
 
   final String rawValue;
-  final bool isSafe;
+  final QrVerdict verdict;
   final String connectionDetail;
   final String domainDetail;
   final String phishingDetail;
+  final String databaseDetail;
+  final List<String> reasons;
   final String? merchantName;
+  final String? threatRecordId;
+
+  bool get isSafe => verdict == QrVerdict.safe;
+  bool get isHighRisk => verdict == QrVerdict.highRisk;
+  bool get canRetry => verdict == QrVerdict.unknown;
 }

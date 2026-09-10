@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/app_error_message.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/verification_repository.dart';
 import '../../data/qr_repository.dart';
 import '../../data/admin_repository.dart';
 import '../../data/scam_map_repository.dart';
+import '../../data/learning_repository.dart';
 import '../../data/emergency_repository.dart';
 import '../../data/help_nearby_repository.dart';
 import '../../data/incident_report_repository.dart';
 import '../../data/sos_repository.dart';
 import '../admin/admin_gate.dart';
 import '../../models/module_models.dart';
+import '../../services/input_validation_service.dart';
 import 'verification_result_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'scam_map_screen.dart';
+import 'learning/learning_home_screen.dart';
 import 'emergency_dashboard_screen.dart';
 
 class VerificationHomeScreen extends StatefulWidget {
-  const VerificationHomeScreen({required this.repository, super.key});
+  const VerificationHomeScreen({
+    required this.repository,
+    required this.learningRepository,
+    super.key,
+  });
 
   final VerificationRepository repository;
+  final LearningRepository learningRepository;
 
   @override
   State<VerificationHomeScreen> createState() {
@@ -34,6 +43,7 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
   late Future<List<RecentSearch>> recentSearches;
   bool isSearching = false;
+  String? searchError;
 
   @override
   void initState() {
@@ -49,18 +59,18 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
   Future<void> searchBusiness([String? suppliedQuery]) async {
     final query = (suppliedQuery ?? queryController.text).trim();
+    final validationError = InputValidationService.validateSearch(query);
 
-    if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a business name, phone, email or URL.'),
-        ),
-      );
+    if (validationError != null) {
+      setState(() {
+        searchError = validationError;
+      });
       return;
     }
 
     setState(() {
       isSearching = true;
+      searchError = null;
     });
 
     try {
@@ -86,14 +96,19 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
           recentSearches = widget.repository.getRecentSearches();
         });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      logDebugError('Search business', error, stackTrace);
+
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Search failed: $error')));
+      setState(() {
+        searchError = friendlyErrorMessage(
+          error,
+          fallback: 'Verification is temporarily unavailable. Please retry.',
+        );
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -152,6 +167,18 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
     );
   }
 
+  Future<void> openLearn() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return LearningHomeScreen(
+            repository: widget.learningRepository,
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> openEmergencyAssistance() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -180,6 +207,7 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
     return MobileShell(
       onAdmin: openAdmin,
       onMap: openScamMap,
+      onLearn: openLearn,
       onEmergency: openEmergencyAssistance,
       currentNavigationIndex: 2,
       child: ListView(
@@ -195,11 +223,56 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
             'deceptive traders.',
             style: TextStyle(color: AppColors.slate, fontSize: 13),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          SurfaceCard(
+            color: AppColors.blueSoft,
+            borderColor: AppColors.blue,
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.manage_search_rounded, color: AppColors.blue),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Smart Verification',
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Search by business name, phone, email or URL. '
+                        'Small spelling mistakes are checked using fuzzy matching.',
+                        style: TextStyle(
+                          color: AppColors.slate,
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           TextField(
             controller: queryController,
             textInputAction: TextInputAction.search,
+            onChanged: (_) {
+              if (searchError != null) {
+                setState(() {
+                  searchError = null;
+                });
+              }
+            },
             onSubmitted: (value) {
               searchBusiness(value);
             },
@@ -217,11 +290,23 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
                     )
                   : IconButton(
                       tooltip: 'Search',
-                      onPressed: searchBusiness,
+                      onPressed: () => searchBusiness(),
                       icon: const Icon(Icons.arrow_forward_rounded, size: 19),
                     ),
             ),
           ),
+
+          if (searchError != null) ...[
+            const SizedBox(height: 7),
+            Text(
+              searchError!,
+              style: const TextStyle(
+                color: AppColors.red,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
 
           const SizedBox(height: 12),
 
@@ -274,10 +359,28 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
               if (snapshot.hasError) {
                 return SurfaceCard(
-                  child: Text(
-                    'Could not load recent searches.\n'
-                    '${snapshot.error}',
-                    style: const TextStyle(color: AppColors.red),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recent searches are temporarily unavailable.',
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            recentSearches = widget.repository
+                                .getRecentSearches();
+                          });
+                        },
+                        icon: const Icon(Icons.refresh, size: 17),
+                        label: const Text('Try Again'),
+                      ),
+                    ],
                   ),
                 );
               }

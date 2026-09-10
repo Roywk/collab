@@ -48,7 +48,7 @@ class LocationService {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       throw const LocationUnavailableException(
-        'Location permission is required to find nearby safety services.',
+        'Location permission is required to use this service.',
       );
     }
 

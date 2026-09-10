@@ -3,12 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
+import '../../data/awareness_admin_repository.dart';
+import 'awareness_cms_screen.dart';
 import 'threat_database_screen.dart';
 
 class AdminGate extends StatefulWidget {
-  const AdminGate({required this.repository, super.key});
+  const AdminGate({
+    required this.repository,
+    this.initialAwareness = false,
+    super.key,
+  });
 
   final AdminRepository repository;
+  final bool initialAwareness;
 
   @override
   State<AdminGate> createState() {
@@ -53,6 +60,14 @@ class _AdminGateState extends State<AdminGate> {
         }
 
         if (snapshot.data == true) {
+          if (widget.initialAwareness) {
+            return AwarenessCmsScreen(
+              repository: AwarenessAdminRepository(
+                client: widget.repository.client,
+              ),
+              onSignOut: adminSignedOut,
+            );
+          }
           return ThreatDatabaseScreen(
             repository: widget.repository,
             onSignOut: adminSignedOut,
