@@ -125,6 +125,9 @@ class AdminScenarioDraft {
     required this.correctIndex,
     required this.feedback,
     required this.status,
+    this.mediaType = 'none',
+    this.mediaUrl,
+    this.mediaCaption,
   });
 
   final String? id;
@@ -138,6 +141,9 @@ class AdminScenarioDraft {
   final int correctIndex;
   final String feedback;
   final String status;
+  final String mediaType;
+  final String? mediaUrl;
+  final String? mediaCaption;
 }
 
 class AdminVoucherRecord {

@@ -201,6 +201,9 @@ class AwarenessAdminRepository {
           .clamp(0, 99),
       feedback: optionRows.isEmpty ? '' : optionRows.first['feedback'] ?? '',
       status: row['status'] ?? 'draft',
+      mediaType: row['media_type'] ?? 'none',
+      mediaUrl: row['media_url'],
+      mediaCaption: row['media_caption'],
     );
   }
 
@@ -220,6 +223,9 @@ class AwarenessAdminRepository {
           'correct_index': draft.correctIndex,
           'feedback': draft.feedback,
           'status': draft.status,
+          'media_type': draft.mediaType,
+          'media_url': _nullable(draft.mediaUrl),
+          'media_caption': _nullable(draft.mediaCaption),
         },
       },
     );

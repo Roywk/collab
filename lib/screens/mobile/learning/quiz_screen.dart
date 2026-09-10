@@ -7,17 +7,22 @@ import '../../../models/learning_models.dart';
 import 'quiz_result_screen.dart';
 
 class QuizScreen extends StatefulWidget {
-  const QuizScreen({required this.repository, super.key});
+  const QuizScreen({
+    required this.repository,
+    required this.questions,
+    super.key,
+  });
 
   final LearningRepository repository;
+  final List<QuizQuestion> questions;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
 
 class _QuizScreenState extends State<QuizScreen> {
-  late Future<List<QuizQuestion>> questionsFuture;
   List<QuizQuestion> questions = [];
+  late List<int> answers;
   int currentQuestionIndex = 0;
   int? selectedOptionIndex;
   int correctAnswers = 0;
@@ -33,26 +38,10 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   void initState() {
     super.initState();
-    questionsFuture = widget.repository.getQuizQuestions();
-    _loadQuestions();
-  }
-
-  Future<void> _loadQuestions() async {
-    try {
-      final value = await questionsFuture;
-      if (!mounted) return;
-      setState(() {
-        questions = value;
-        _loading = false;
-      });
-      if (value.isNotEmpty) _startQuestion();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _loadError = error;
-      });
-    }
+    questions = widget.questions;
+    answers = List<int>.filled(questions.length, -1);
+    _loading = false;
+    if (questions.isNotEmpty) _startQuestion();
   }
 
   void _startQuestion() {
@@ -77,6 +66,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
     setState(() {
       isAnswered = true;
+      answers[currentQuestionIndex] = selectedOptionIndex ?? -1;
       if (selectedOptionIndex ==
           questions[currentQuestionIndex].correctOptionIndex) {
         correctAnswers++;
@@ -119,6 +109,8 @@ class _QuizScreenState extends State<QuizScreen> {
             progressSaved: saved,
             saveError: saveError,
             xpEarned: xpAwarded,
+            questions: questions,
+            answers: answers,
           ),
         ),
       );

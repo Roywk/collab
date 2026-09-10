@@ -145,6 +145,35 @@ class _LessonsScreenState extends State<LessonsScreen> {
   Widget _buildLessonTile(BuildContext context, LearningLesson lesson) {
     return InkWell(
       onTap: () async {
+        if (lesson.isCompleted) {
+          final studyAgain =
+              await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  icon: const Icon(
+                    Icons.task_alt,
+                    color: AppColors.green,
+                    size: 34,
+                  ),
+                  title: const Text('Lesson already completed'),
+                  content: const Text(
+                    'Are you sure you want to study this lesson again? Your completion and XP will remain unchanged.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Keep as done'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Study again'),
+                    ),
+                  ],
+                ),
+              ) ??
+              false;
+          if (!studyAgain || !context.mounted) return;
+        }
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -197,10 +226,23 @@ class _LessonsScreenState extends State<LessonsScreen> {
                         ),
                       ),
                       if (lesson.isCompleted)
-                        const Icon(
-                          Icons.check_circle,
-                          color: AppColors.green,
-                          size: 16,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.greenSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'DONE',
+                            style: TextStyle(
+                              color: AppColors.green,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                     ],
                   ),

@@ -4,7 +4,7 @@ import '../models/report_models.dart';
 
 class AdminRepository {
   AdminRepository({SupabaseClient? client})
-      : client = client ?? Supabase.instance.client;
+    : client = client ?? Supabase.instance.client;
 
   final SupabaseClient client;
 
@@ -174,20 +174,27 @@ class AdminRepository {
     required String status,
     String? adminNotes,
   }) async {
-    await client.from('scam_reports').update({
-      'verification_status': status,
-      'admin_notes': adminNotes,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', reportId);
+    await client
+        .from('scam_reports')
+        .update({
+          'verification_status': status,
+          'admin_notes': adminNotes,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', reportId);
   }
 
   Future<void> deleteScamReport(String reportId) async {
     await client.from('scam_reports').delete().eq('id', reportId);
   }
 
-  Future<List<ScamReport>> getNearbyReports(double lat, double lng, {String? excludeId}) async {
+  Future<List<ScamReport>> getNearbyReports(
+    double lat,
+    double lng, {
+    String? excludeId,
+  }) async {
     // Basic bounding box search for nearby reports (~1km)
-    final double delta = 0.01; 
+    final double delta = 0.01;
     var query = client
         .from('scam_reports')
         .select()
@@ -207,27 +214,22 @@ class AdminRepository {
   Future<Map<String, dynamic>> getModerationStats() async {
     // This would ideally be a RPC call or multiple aggregations
     // For now, return some mocked data or implement basic counts
-    final reportsResponse = await client.from('scam_reports').select('verification_status');
+    final reportsResponse = await client
+        .from('scam_reports')
+        .select('verification_status');
     final reports = reportsResponse as List;
-    
+
     final total = reports.length;
-    final pending = reports.where((r) => r['verification_status'] == 'Pending').length;
-    
+    final pending = reports
+        .where((r) => r['verification_status'] == 'Pending')
+        .length;
+
     return {
       'total_reports': total,
       'pending_review': pending,
       'accuracy_rate': 94.2, // Mocked or calculated
       'community_reach': '12.4k', // Mocked or calculated
     };
-  }
-
-  Future<List<Map<String, dynamic>>> getAwarenessContent() async {
-    final response = await client
-        .from('awareness_content')
-        .select()
-        .order('updated_at', ascending: false);
-    
-    return List<Map<String, dynamic>>.from(response as List);
   }
 
   ScamReport _mapScamReport(Map<String, dynamic> json) {
@@ -245,7 +247,9 @@ class AdminRepository {
       isAnonymous: json['is_anonymous'] ?? false,
       adminNotes: json['admin_notes']?.toString(),
       createdAt: DateTime.parse(json['created_at']),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 

@@ -36,6 +36,7 @@ class _AwarenessContentEditorScreenState
   final _readTime = TextEditingController(text: '3 min');
   final _xp = TextEditingController(text: '20');
   final _timeLimit = TextEditingController(text: '15');
+  final _mediaCaption = TextEditingController();
   final List<TextEditingController> _options = List.generate(
     4,
     (_) => TextEditingController(),
@@ -49,6 +50,7 @@ class _AwarenessContentEditorScreenState
   int _correctIndex = 0;
   bool _saving = false;
   String? _error;
+  String _scenarioMediaType = 'none';
 
   static const categories = [
     'Transport Scams',
@@ -120,6 +122,9 @@ class _AwarenessContentEditorScreenState
         _category = item.category;
         _difficulty = item.difficulty;
         _status = item.status;
+        _scenarioMediaType = item.mediaType;
+        _image.text = item.mediaUrl ?? '';
+        _mediaCaption.text = item.mediaCaption ?? '';
         break;
     }
   }
@@ -138,6 +143,7 @@ class _AwarenessContentEditorScreenState
       _readTime,
       _xp,
       _timeLimit,
+      _mediaCaption,
       ..._options,
     ]) {
       controller.dispose();
@@ -226,6 +232,9 @@ class _AwarenessContentEditorScreenState
               correctIndex: _correctIndex,
               feedback: _redFlags.text.trim(),
               status: status,
+              mediaType: _scenarioMediaType,
+              mediaUrl: _image.text.trim(),
+              mediaCaption: _mediaCaption.text.trim(),
             ),
           );
           break;
@@ -408,12 +417,16 @@ class _AwarenessContentEditorScreenState
                         xp: _xp,
                         timeLimit: _timeLimit,
                         locationBased: _locationBased,
+                        mediaType: _scenarioMediaType,
+                        mediaCaption: _mediaCaption,
                         onCategoryChanged: (value) =>
                             setState(() => _category = value),
                         onDifficultyChanged: (value) =>
                             setState(() => _difficulty = value),
                         onLocationChanged: (value) =>
                             setState(() => _locationBased = value),
+                        onMediaTypeChanged: (value) =>
+                            setState(() => _scenarioMediaType = value),
                       );
                       if (!wide) {
                         return Column(
@@ -656,6 +669,9 @@ class _EditorSettings extends StatelessWidget {
     required this.onCategoryChanged,
     required this.onDifficultyChanged,
     required this.onLocationChanged,
+    required this.mediaType,
+    required this.mediaCaption,
+    required this.onMediaTypeChanged,
   });
   final AwarenessContentType type;
   final String category;
@@ -671,6 +687,9 @@ class _EditorSettings extends StatelessWidget {
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onDifficultyChanged;
   final ValueChanged<bool> onLocationChanged;
+  final String mediaType;
+  final TextEditingController mediaCaption;
+  final ValueChanged<String> onMediaTypeChanged;
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -793,6 +812,55 @@ class _EditorSettings extends StatelessWidget {
                   prefixIcon: Icon(Icons.link, size: 17),
                 ),
               ),
+            ],
+          ),
+        ),
+      if (type == AwarenessContentType.scenario)
+        _EditorCard(
+          title: 'Scenario media',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: ['none', 'image', 'video'].contains(mediaType)
+                    ? mediaType
+                    : 'none',
+                decoration: const InputDecoration(labelText: 'Media type'),
+                items: const [
+                  DropdownMenuItem(value: 'none', child: Text('No media')),
+                  DropdownMenuItem(value: 'image', child: Text('Photo')),
+                  DropdownMenuItem(value: 'video', child: Text('Video')),
+                ],
+                onChanged: (value) {
+                  if (value != null) onMediaTypeChanged(value);
+                },
+              ),
+              if (mediaType != 'none') ...[
+                const SizedBox(height: 9),
+                TextFormField(
+                  controller: image,
+                  decoration: InputDecoration(
+                    labelText: mediaType == 'video'
+                        ? 'Public video URL'
+                        : 'Public image URL',
+                    prefixIcon: Icon(
+                      mediaType == 'video'
+                          ? Icons.play_circle_outline
+                          : Icons.image_outlined,
+                    ),
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 9),
+                TextFormField(
+                  controller: mediaCaption,
+                  decoration: const InputDecoration(
+                    labelText: 'Accessible caption',
+                    hintText: 'Explain what the traveller should notice',
+                  ),
+                  maxLines: 2,
+                ),
+              ],
             ],
           ),
         ),

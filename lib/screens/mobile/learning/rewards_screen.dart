@@ -29,11 +29,59 @@ class _RewardsScreenState extends State<RewardsScreen> {
     ]);
   }
 
-  Future<void> _claim(RewardVoucher voucher) async {
+  Future<void> _claim(
+    RewardVoucher voucher,
+    UserLearningProfile profile,
+  ) async {
     if (voucher.isClaimed && voucher.promoCode != null) {
       _showCode(voucher, voucher.promoCode!);
       return;
     }
+    final approved =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(
+              Icons.redeem_outlined,
+              color: AppColors.green,
+              size: 36,
+            ),
+            title: const Text('Redeem this reward?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('${voucher.title} costs ${voucher.requiredXp} XP.'),
+                const SizedBox(height: 12),
+                _BalanceRow(
+                  label: 'Current balance',
+                  value: '${profile.spendableXp} XP',
+                ),
+                _BalanceRow(
+                  label: 'Redemption cost',
+                  value: '−${voucher.requiredXp} XP',
+                ),
+                const Divider(),
+                _BalanceRow(
+                  label: 'Balance after redeeming',
+                  value: '${profile.spendableXp - voucher.requiredXp} XP',
+                  strong: true,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Redeem now'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!approved || !mounted) return;
     setState(() => _claimingId = voucher.id);
     try {
       final code = await widget.repository.claimVoucher(voucher.id);
@@ -49,6 +97,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
             content: Text(
               error.toString().contains('out of stock')
                   ? 'This reward has just sold out. Please choose another reward.'
+                  : error.toString().contains('Not enough XP')
+                  ? 'You no longer have enough XP. Complete more activities and try again.'
                   : 'Voucher could not be claimed. Please try again.',
             ),
           ),
@@ -76,7 +126,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                voucher.isClaimed ? 'Your voucher' : 'Reward unlocked!',
+                voucher.isClaimed ? 'Your voucher' : 'Reward redeemed!',
                 style: const TextStyle(
                   color: AppColors.navy,
                   fontSize: 20,
@@ -209,7 +259,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     ),
                   ),
                   Text(
-                    'Level ${profile.currentLevel} · ${profile.totalXp} XP earned',
+                    'Level ${profile.currentLevel} · ${profile.totalXp} lifetime XP',
                     style: const TextStyle(
                       color: Color(0xFFDCFCE7),
                       fontSize: 10,
@@ -218,7 +268,10 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   const SizedBox(height: 13),
                   Row(
                     children: [
-                      _HeroStat(value: '${profile.totalXp}', label: 'TOTAL XP'),
+                      _HeroStat(
+                        value: '${profile.spendableXp}',
+                        label: 'XP BALANCE',
+                      ),
                       const SizedBox(width: 9),
                       _HeroStat(
                         value: '${profile.vouchersCount}',
@@ -278,7 +331,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     voucher: voucher,
                     profile: profile,
                     busy: _claimingId == voucher.id,
-                    onClaim: () => _claim(voucher),
+                    onClaim: () => _claim(voucher, profile),
                   ),
                 ),
           ],
@@ -337,13 +390,13 @@ class _RewardCard extends StatelessWidget {
   final VoidCallback onClaim;
   @override
   Widget build(BuildContext context) {
-    final remaining = (voucher.requiredXp - profile.totalXp).clamp(
+    final remaining = (voucher.requiredXp - profile.spendableXp).clamp(
       0,
       voucher.requiredXp,
     );
     final progress = voucher.requiredXp == 0
         ? 1.0
-        : (profile.totalXp / voucher.requiredXp).clamp(0, 1).toDouble();
+        : (profile.spendableXp / voucher.requiredXp).clamp(0, 1).toDouble();
     return SurfaceCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -416,12 +469,12 @@ class _RewardCard extends StatelessWidget {
                   children: [
                     Text(
                       voucher.isClaimed
-                          ? 'Already claimed'
+                          ? 'Already redeemed'
                           : !voucher.isAvailable
                           ? 'Currently out of stock'
                           : voucher.isUnlocked
-                          ? 'Unlocked and ready'
-                          : '$remaining XP to unlock',
+                          ? 'Ready to redeem'
+                          : 'Need $remaining more XP',
                       style: TextStyle(
                         color: voucher.isUnlocked && voucher.isAvailable
                             ? AppColors.green
@@ -431,7 +484,7 @@ class _RewardCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${voucher.requiredXp} XP',
+                      'Costs ${voucher.requiredXp} XP',
                       style: const TextStyle(
                         color: AppColors.slate,
                         fontSize: 9,
@@ -476,8 +529,8 @@ class _RewardCard extends StatelessWidget {
                           : !voucher.isAvailable
                           ? 'Out of stock'
                           : voucher.isUnlocked
-                          ? 'Claim reward'
-                          : 'Locked',
+                          ? 'Redeem for ${voucher.requiredXp} XP'
+                          : 'Need $remaining more XP',
                     ),
                   ),
                 ),
@@ -488,4 +541,39 @@ class _RewardCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BalanceRow extends StatelessWidget {
+  const _BalanceRow({
+    required this.label,
+    required this.value,
+    this.strong = false,
+  });
+
+  final String label;
+  final String value;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.slate, fontSize: 11),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: strong ? AppColors.navy : AppColors.slate,
+            fontSize: 11,
+            fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
 }

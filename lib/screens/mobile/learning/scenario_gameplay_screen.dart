@@ -3,6 +3,7 @@ import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
 import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ScenarioGameplayScreen extends StatefulWidget {
   const ScenarioGameplayScreen({
@@ -149,159 +150,268 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
           'Scenario ${currentStepIndex + 1} of ${widget.scenario.steps.length}',
       onBack: () => Navigator.pop(context),
       currentNavigationIndex: 5,
-      child: Padding(
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'ACTIVE SIMULATION',
-              style: TextStyle(
-                color: AppColors.blue,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
+        children: [
+          const Text(
+            'ACTIVE SIMULATION',
+            style: TextStyle(
+              color: AppColors.blue,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
             ),
-            Text(
-              widget.scenario.title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
-              ),
+          ),
+          Text(
+            widget.scenario.title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
             ),
-            const SizedBox(height: 20),
-            SurfaceCard(
-              color: AppColors.blueSoft.withValues(alpha: 0.2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'THE SITUATION',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.blue,
-                    ),
+          ),
+          const SizedBox(height: 20),
+          if (widget.scenario.mediaUrl?.isNotEmpty == true) ...[
+            _ScenarioMedia(scenario: widget.scenario),
+            const SizedBox(height: 16),
+          ],
+          SurfaceCard(
+            color: AppColors.blueSoft.withValues(alpha: 0.2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'THE SITUATION',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.blue,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    step.situation,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.navy,
-                      fontWeight: FontWeight.w600,
-                      height: 1.5,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  step.situation,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.navy,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ...step.options.map((option) {
+            final isSelected = selectedOption == option;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: showFeedback
+                    ? null
+                    : () => setState(() => selectedOption = option),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.blueSoft : Colors.white,
+                    border: Border.all(
+                      color: isSelected ? AppColors.blue : AppColors.line,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.blue
+                                : AppColors.slate,
+                          ),
+                        ),
+                        child: isSelected
+                            ? const Center(
+                                child: CircleAvatar(
+                                  radius: 5,
+                                  backgroundColor: AppColors.blue,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          option.text,
+                          style: TextStyle(
+                            color: isSelected ? AppColors.blue : AppColors.navy,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          if (showFeedback)
+            SurfaceCard(
+              color: selectedOption!.isCorrect
+                  ? AppColors.greenSoft
+                  : AppColors.redSoft,
+              borderColor: selectedOption!.isCorrect
+                  ? AppColors.green
+                  : AppColors.red,
+              child: Row(
+                children: [
+                  Icon(
+                    selectedOption!.isCorrect
+                        ? Icons.check_circle
+                        : Icons.error,
+                    color: selectedOption!.isCorrect
+                        ? AppColors.green
+                        : AppColors.red,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      selectedOption!.feedback,
+                      style: TextStyle(
+                        color: selectedOption!.isCorrect
+                            ? AppColors.green
+                            : AppColors.red,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            ...step.options.map((option) {
-              final isSelected = selectedOption == option;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: showFeedback
-                      ? null
-                      : () => setState(() => selectedOption = option),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.blueSoft : Colors.white,
-                      border: Border.all(
-                        color: isSelected ? AppColors.blue : AppColors.line,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.blue
-                                  : AppColors.slate,
-                            ),
-                          ),
-                          child: isSelected
-                              ? const Center(
-                                  child: CircleAvatar(
-                                    radius: 5,
-                                    backgroundColor: AppColors.blue,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            option.text,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.blue
-                                  : AppColors.navy,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          const SizedBox(height: 16),
+          PrimaryActionButton(
+            label: showFeedback ? 'Continue' : 'Submit Answer',
+            onPressed: showFeedback ? _nextStep : _submitAnswer,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScenarioMedia extends StatelessWidget {
+  const _ScenarioMedia({required this.scenario});
+  final Scenario scenario;
+
+  Future<void> _openVideo(BuildContext context) async {
+    final uri = Uri.tryParse(scenario.mediaUrl ?? '');
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This scenario video could not be opened.'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (scenario.mediaType == 'video') {
+      return Semantics(
+        label: scenario.mediaCaption ?? 'Scenario video',
+        button: true,
+        child: InkWell(
+          onTap: () => _openVideo(context),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 170,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF111827), Color(0xFF334155)],
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.blue,
+                    size: 34,
                   ),
                 ),
-              );
-            }),
-            const Spacer(),
-            if (showFeedback)
-              SurfaceCard(
-                color: selectedOption!.isCorrect
-                    ? AppColors.greenSoft
-                    : AppColors.redSoft,
-                borderColor: selectedOption!.isCorrect
-                    ? AppColors.green
-                    : AppColors.red,
-                child: Row(
-                  children: [
-                    Icon(
-                      selectedOption!.isCorrect
-                          ? Icons.check_circle
-                          : Icons.error,
-                      color: selectedOption!.isCorrect
-                          ? AppColors.green
-                          : AppColors.red,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        selectedOption!.feedback,
-                        style: TextStyle(
-                          color: selectedOption!.isCorrect
-                              ? AppColors.green
-                              : AppColors.red,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Watch scenario briefing',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (scenario.mediaCaption?.isNotEmpty == true) ...[
+                  const SizedBox(height: 5),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      scenario.mediaCaption!,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 16),
-            PrimaryActionButton(
-              label: showFeedback ? 'Continue' : 'Submit Answer',
-              onPressed: showFeedback ? _nextStep : _submitAnswer,
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.network(
+            scenario.mediaUrl!,
+            width: double.infinity,
+            height: 190,
+            fit: BoxFit.cover,
+            semanticLabel: scenario.mediaCaption ?? 'Scenario image',
+            errorBuilder: (_, _, _) => Container(
+              height: 130,
+              color: AppColors.canvas,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.broken_image_outlined,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
+        ),
+        if (scenario.mediaCaption?.isNotEmpty == true) ...[
+          const SizedBox(height: 6),
+          Text(
+            scenario.mediaCaption!,
+            style: const TextStyle(color: AppColors.slate, fontSize: 9),
+          ),
+        ],
+      ],
     );
   }
 }

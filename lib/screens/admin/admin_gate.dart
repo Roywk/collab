@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import 'awareness_cms_screen.dart';
-import 'threat_database_screen.dart';
 import 'admin_scam_overview_screen.dart';
 
 class AdminGate extends StatefulWidget {
@@ -67,9 +66,6 @@ class _AdminGateState extends State<AdminGate> {
             );
           }
           return AdminScamOverviewScreen(
-            repository: widget.repository,
-            onSignOut: adminSignedOut,
-          );
             repository: widget.repository,
             onSignOut: adminSignedOut,
           );

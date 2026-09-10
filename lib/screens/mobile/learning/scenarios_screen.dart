@@ -87,6 +87,35 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
     return InkWell(
       onTap: () async {
         if (scenario.steps.isNotEmpty) {
+          if (isCompleted) {
+            final tryAgain =
+                await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    icon: const Icon(
+                      Icons.task_alt,
+                      color: AppColors.green,
+                      size: 34,
+                    ),
+                    title: const Text('Challenge already completed'),
+                    content: const Text(
+                      'This challenge has already been done. Are you sure you want to try it again? Your completion and XP will remain unchanged.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Keep as done'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Try again'),
+                      ),
+                    ],
+                  ),
+                ) ??
+                false;
+            if (!tryAgain || !context.mounted) return;
+          }
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -155,6 +184,26 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                               color: AppColors.red,
                               fontSize: 8,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.greenSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'DONE',
+                            style: TextStyle(
+                              color: AppColors.green,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),

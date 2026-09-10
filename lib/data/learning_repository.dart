@@ -13,7 +13,7 @@ class LearningRepository {
 
     final profileData = await client
         .from('profiles')
-        .select('total_xp, current_level')
+        .select('total_xp, available_xp, current_level')
         .eq('id', userId)
         .single();
 
@@ -29,6 +29,7 @@ class LearningRepository {
       currentLevel: profileData['current_level'] ?? 1,
       vouchersCount: vouchersResponse.count,
       rankTitle: _getRankTitle(profileData['current_level'] ?? 1),
+      availableXp: profileData['available_xp'] ?? profileData['total_xp'] ?? 0,
     );
   }
 
@@ -133,6 +134,9 @@ class LearningRepository {
         xpReward: s['xp_reward'] ?? 50,
         steps: steps,
         category: s['category'] ?? 'General',
+        mediaType: s['media_type'] ?? 'none',
+        mediaUrl: s['media_url'],
+        mediaCaption: s['media_caption'],
       );
     }).toList();
   }
@@ -234,7 +238,7 @@ class LearningRepository {
         discountAmount: v['discount_amount'],
         expiryDate: DateTime.parse(v['valid_until']),
         requiredXp: requiredXp,
-        isUnlocked: profile != null && profile.totalXp >= requiredXp,
+        isUnlocked: profile != null && profile.spendableXp >= requiredXp,
         isClaimed: isClaimed,
         promoCode: fullCode,
         availableCodes: inventoryByVoucher[v['id'].toString()] ?? 0,

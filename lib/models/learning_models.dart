@@ -46,6 +46,9 @@ class Scenario {
   final int xpReward;
   final List<ScenarioStep> steps;
   final String category;
+  final String mediaType;
+  final String? mediaUrl;
+  final String? mediaCaption;
 
   Scenario({
     required this.id,
@@ -57,6 +60,9 @@ class Scenario {
     required this.xpReward,
     required this.steps,
     this.category = 'General',
+    this.mediaType = 'none',
+    this.mediaUrl,
+    this.mediaCaption,
   });
 }
 
@@ -141,6 +147,7 @@ class UserLearningProfile {
   final int currentLevel;
   final int vouchersCount;
   final String rankTitle;
+  final int? availableXp;
 
   UserLearningProfile({
     required this.userId,
@@ -148,7 +155,10 @@ class UserLearningProfile {
     required this.currentLevel,
     required this.vouchersCount,
     required this.rankTitle,
+    this.availableXp,
   });
+
+  int get spendableXp => availableXp ?? totalXp;
 
   int get xpForNextLevel => currentLevel * 200;
   int get xpIntoCurrentLevel => totalXp - ((currentLevel - 1) * 200);

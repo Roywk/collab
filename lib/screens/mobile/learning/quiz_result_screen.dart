@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
+import '../../../models/learning_models.dart';
+import 'quiz_review_screen.dart';
 
 class QuizResultScreen extends StatelessWidget {
   const QuizResultScreen({
@@ -9,6 +11,8 @@ class QuizResultScreen extends StatelessWidget {
     required this.timeTaken,
     required this.progressSaved,
     required this.xpEarned,
+    required this.questions,
+    required this.answers,
     this.saveError,
     super.key,
   });
@@ -19,6 +23,8 @@ class QuizResultScreen extends StatelessWidget {
   final bool progressSaved;
   final int xpEarned;
   final String? saveError;
+  final List<QuizQuestion> questions;
+  final List<int> answers;
 
   @override
   Widget build(BuildContext context) {
@@ -134,13 +140,18 @@ class QuizResultScreen extends StatelessWidget {
             ),
             const Spacer(),
             PrimaryActionButton(
-              label: 'Back to Module 5',
+              label: 'Return to Homepage',
               onPressed: () => Navigator.pop(context),
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () =>
-                  Navigator.pop(context), // Would typically navigate to review
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      QuizReviewScreen(questions: questions, answers: answers),
+                ),
+              ),
               child: const Text(
                 'Review Answers',
                 style: TextStyle(

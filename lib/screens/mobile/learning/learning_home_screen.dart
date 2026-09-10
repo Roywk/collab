@@ -8,7 +8,7 @@ import '../../../models/learning_models.dart';
 import '../../../services/location_service.dart';
 import 'lesson_detail_screen.dart';
 import 'lessons_screen.dart';
-import 'quiz_screen.dart';
+import 'quiz_intro_screen.dart';
 import 'rewards_screen.dart';
 import 'scenarios_screen.dart';
 
@@ -165,7 +165,7 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
-                            QuizScreen(repository: widget.repository),
+                            QuizIntroScreen(repository: widget.repository),
                       ),
                     ).then((_) => _refresh()),
                   ),

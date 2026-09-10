@@ -59,7 +59,10 @@ class _AdminScamOverviewScreenState extends State<AdminScamOverviewScreen> {
   Future<void> _openHeatmap() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => ThreatHeatmapScreen(repository: _scamRepository),
+        builder: (context) => ThreatHeatmapScreen(
+          repository: _scamRepository,
+          onSignOut: widget.onSignOut,
+        ),
       ),
     );
   }
@@ -107,7 +110,7 @@ class _AdminScamOverviewScreenState extends State<AdminScamOverviewScreen> {
       onOpenDashboard: () {},
       onOpenThreatDatabase: _openThreatDatabase,
       onOpenHeatmap: _openHeatmap,
-      onPublishScamCase: _openManualCase,
+      onOpenPublishScamCase: _openManualCase,
       onOpenBankHotlines: _openBankHotlines,
       onOpenEmergencyFacilities: _openEmergencyFacilities,
       onSignOut: widget.onSignOut,
