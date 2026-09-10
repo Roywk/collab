@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
-import '../../data/awareness_admin_repository.dart';
 import 'awareness_cms_screen.dart';
 import 'threat_database_screen.dart';
 
@@ -62,9 +61,7 @@ class _AdminGateState extends State<AdminGate> {
         if (snapshot.data == true) {
           if (widget.initialAwareness) {
             return AwarenessCmsScreen(
-              repository: AwarenessAdminRepository(
-                client: widget.repository.client,
-              ),
+              repository: widget.repository,
               onSignOut: adminSignedOut,
             );
           }

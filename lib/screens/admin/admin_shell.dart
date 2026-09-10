@@ -15,9 +15,6 @@ class AdminShell extends StatelessWidget {
     this.onOpenHeatmap,
     this.onOpenPublishScamCase,
     this.onOpenVerifiedMerchants,
-    this.onOpenHeatmap,
-    this.onOpenPublishScamCase,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenSettings,
@@ -76,7 +73,7 @@ class AdminShell extends StatelessWidget {
                       },
                     ),
               title: Text(
-                headerTitle ?? selectedMenuItem,
+                headerTitle,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -86,7 +83,10 @@ class AdminShell extends StatelessWidget {
                 if (onOpenReports != null)
                   IconButton(
                     onPressed: onOpenReports,
-                    icon: const Icon(Icons.report_gmailerrorred_outlined, size: 20),
+                    icon: const Icon(
+                      Icons.report_gmailerrorred_outlined,
+                      size: 20,
+                    ),
                   ),
                 const Padding(
                   padding: EdgeInsets.only(right: 12),
@@ -165,7 +165,7 @@ class AdminShell extends StatelessWidget {
                                 ],
                                 Expanded(
                                   child: Text(
-                                    headerTitle ?? selectedMenuItem,
+                                    headerTitle,
                                     style: const TextStyle(
                                       color: AppColors.navy,
                                       fontSize: 21,
@@ -317,76 +317,90 @@ class AdminSidebar extends StatelessWidget {
               ],
             ),
           ),
-          for (final item in menuItems)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-              child: Material(
-                color: item.$2 == selectedMenuItem
-                    ? AppColors.blue
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                child: ListTile(
-                  onTap: () {
-                    switch (item.$2) {
-                      case 'Dashboard Overview':
-                        onOpenDashboard?.call();
-                        break;
-                      case 'Reports Moderation':
-                        onOpenReports?.call();
-                        break;
-                      case 'Threat Database':
-                        onOpenThreatDatabase?.call();
-                        break;
-                      case 'Geospatial Heatmap':
-                        onOpenHeatmap?.call();
-                        break;
-                      case 'Verified Merchants':
-                        onOpenVerifiedMerchants?.call();
-                        break;
-                      case 'Bank Hotline Mgmt':
-                        onOpenBankHotlines?.call();
-                        break;
-                      case 'Emergency Facilities':
-                        onOpenEmergencyFacilities?.call();
-                        break;
-                      case 'Awareness CMS':
-                        if (onOpenAwareness != null) {
-                          onOpenAwareness!.call();
-                        } else if (onOpenAwarenessCms != null) {
-                          onOpenAwarenessCms!.call();
-                        } else {
-                          Navigator.of(context).pushNamed('/admin/awareness');
-                        }
-                        break;
-                      case 'System Logs & Settings':
-                        onOpenSettings?.call();
-                        break;
-                        break;
-                    }
-                  },
-                  dense: true,
-                  visualDensity: const VisualDensity(vertical: -3),
-                  leading: Icon(
-                    item.$1,
-                    color: item.$2 == selectedMenuItem ? Colors.white : Colors.white70,
-                    size: 18,
-                  ),
-                  title: Text(
-                    item.$2,
-                    style: TextStyle(
-                      color: item.$2 == selectedMenuItem ? Colors.white : Colors.white70,
-                      fontSize: 12,
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                for (final item in menuItems)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 3,
+                    ),
+                    child: Material(
+                      color: item.$2 == selectedMenuItem
+                          ? AppColors.blue
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(7),
+                      child: ListTile(
+                        onTap: () {
+                          switch (item.$2) {
+                            case 'Dashboard Overview':
+                              onOpenDashboard?.call();
+                              break;
+                            case 'Reports Moderation':
+                              onOpenReports?.call();
+                              break;
+                            case 'Threat Database':
+                              onOpenThreatDatabase?.call();
+                              break;
+                            case 'Geospatial Heatmap':
+                              onOpenHeatmap?.call();
+                              break;
+                            case 'Verified Merchants':
+                              onOpenVerifiedMerchants?.call();
+                              break;
+                            case 'Bank Hotline Mgmt':
+                              onOpenBankHotlines?.call();
+                              break;
+                            case 'Emergency Facilities':
+                              onOpenEmergencyFacilities?.call();
+                              break;
+                            case 'Awareness CMS':
+                              if (onOpenAwareness != null) {
+                                onOpenAwareness!.call();
+                              } else if (onOpenAwarenessCms != null) {
+                                onOpenAwarenessCms!.call();
+                              } else {
+                                Navigator.of(
+                                  context,
+                                ).pushNamed('/admin/awareness');
+                              }
+                              break;
+                            case 'System Logs & Settings':
+                              onOpenSettings?.call();
+                              break;
+                          }
+                        },
+                        dense: true,
+                        visualDensity: const VisualDensity(vertical: -3),
+                        leading: Icon(
+                          item.$1,
+                          color: item.$2 == selectedMenuItem
+                              ? Colors.white
+                              : Colors.white70,
+                          size: 18,
+                        ),
+                        title: Text(
+                          item.$2,
+                          style: TextStyle(
+                            color: item.$2 == selectedMenuItem
+                                ? Colors.white
+                                : Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+              ],
             ),
-          const Spacer(),
+          ),
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -452,10 +466,7 @@ class AdminLiveBadge extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 3,
-            backgroundColor: AppColors.green,
-          ),
+          CircleAvatar(radius: 3, backgroundColor: AppColors.green),
           SizedBox(width: 5),
           Text(
             'LIVE',

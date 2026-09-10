@@ -9,7 +9,8 @@ class ScamReportHistoryScreen extends StatefulWidget {
   const ScamReportHistoryScreen({super.key});
 
   @override
-  State<ScamReportHistoryScreen> createState() => _ScamReportHistoryScreenState();
+  State<ScamReportHistoryScreen> createState() =>
+      _ScamReportHistoryScreenState();
 }
 
 class _ScamReportHistoryScreenState extends State<ScamReportHistoryScreen> {
@@ -38,7 +39,9 @@ class _ScamReportHistoryScreenState extends State<ScamReportHistoryScreen> {
         future: _historyFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+            return const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
           }
 
           if (snapshot.hasError) {
@@ -48,11 +51,21 @@ class _ScamReportHistoryScreenState extends State<ScamReportHistoryScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.red, size: 48),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppColors.red,
+                      size: 48,
+                    ),
                     const SizedBox(height: 16),
-                    Text('Error: ${snapshot.error}', textAlign: TextAlign.center),
+                    Text(
+                      'Error: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
-                    FilledButton(onPressed: _refresh, child: const Text('Try Again')),
+                    FilledButton(
+                      onPressed: _refresh,
+                      child: const Text('Try Again'),
+                    ),
                   ],
                 ),
               ),
@@ -66,11 +79,19 @@ class _ScamReportHistoryScreenState extends State<ScamReportHistoryScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.history_rounded, color: AppColors.slate.withOpacity(0.3), size: 64),
+                  Icon(
+                    Icons.history_rounded,
+                    color: AppColors.slate.withValues(alpha: 0.3),
+                    size: 64,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No reports found',
-                    style: TextStyle(color: AppColors.slate, fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -136,12 +157,20 @@ class _ReportHistoryCard extends StatelessWidget {
                 children: [
                   Text(
                     report.category,
-                    style: const TextStyle(color: AppColors.slate, fontSize: 10, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     report.title,
-                    style: const TextStyle(color: AppColors.navy, fontSize: 15, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -149,12 +178,16 @@ class _ReportHistoryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(100),
               ),
               child: Text(
                 report.verificationStatus.toUpperCase(),
-                style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -174,25 +207,57 @@ class _ReportHistoryCard extends StatelessWidget {
               children: [
                 const Divider(),
                 const SizedBox(height: 8),
-                const Text('DESCRIPTION', style: TextStyle(color: AppColors.slate, fontSize: 9, fontWeight: FontWeight.w800)),
+                const Text(
+                  'DESCRIPTION',
+                  style: TextStyle(
+                    color: AppColors.slate,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(report.description, style: const TextStyle(color: AppColors.navy, fontSize: 13)),
+                Text(
+                  report.description,
+                  style: const TextStyle(color: AppColors.navy, fontSize: 13),
+                ),
                 if (report.amountLost != null && report.amountLost! > 0) ...[
                   const SizedBox(height: 12),
-                  const Text('AMOUNT LOST', style: TextStyle(color: AppColors.slate, fontSize: 9, fontWeight: FontWeight.w800)),
+                  const Text(
+                    'AMOUNT LOST',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('RM ${report.amountLost!.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.red, fontSize: 14, fontWeight: FontWeight.w700)),
+                  Text(
+                    'RM ${report.amountLost!.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: AppColors.red,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
                 if (report.evidenceUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  const Text('EVIDENCE', style: TextStyle(color: AppColors.slate, fontSize: 9, fontWeight: FontWeight.w800)),
+                  const Text(
+                    'EVIDENCE',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 80,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: report.evidenceUrls.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -201,34 +266,53 @@ class _ReportHistoryCard extends StatelessWidget {
                             width: 80,
                             height: 80,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 80,
-                              height: 80,
-                              color: AppColors.canvas,
-                              child: const Icon(Icons.broken_image_outlined, size: 20, color: AppColors.slate),
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  color: AppColors.canvas,
+                                  child: const Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 20,
+                                    color: AppColors.slate,
+                                  ),
+                                ),
                           ),
                         );
                       },
                     ),
                   ),
                 ],
-                if (report.adminNotes != null && report.adminNotes!.isNotEmpty) ...[
+                if (report.adminNotes != null &&
+                    report.adminNotes!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.blueSoft.withOpacity(0.3),
+                      color: AppColors.blueSoft.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.blueSoft),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ADMIN NOTES', style: TextStyle(color: AppColors.blue, fontSize: 9, fontWeight: FontWeight.w800)),
+                        const Text(
+                          'ADMIN NOTES',
+                          style: TextStyle(
+                            color: AppColors.blue,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(report.adminNotes!, style: const TextStyle(color: AppColors.navy, fontSize: 12)),
+                        Text(
+                          report.adminNotes!,
+                          style: const TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),

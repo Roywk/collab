@@ -81,9 +81,6 @@ class Visit1MyApp extends StatelessWidget {
         '/admin': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
         ),
-        '/admin': (context) => AdminGate(
-          repository: AdminRepository(client: accountRepository.client),
-        ),
         '/admin/awareness': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
           initialAwareness: true,

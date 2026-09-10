@@ -102,8 +102,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
   Future<void> openThreatHeatmap() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) =>
-            ThreatHeatmapScreen(
+        builder: (context) => ThreatHeatmapScreen(
           repository: _scamMapRepository,
           onSignOut: widget.onSignOut,
           onOpenDashboard: widget.onOpenDashboard,
@@ -390,7 +389,8 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         label: const Text('Threat Heatmap'),
                       ),
                       FilledButton.icon(
-                        onPressed: widget.onOpenPublishScamCase ?? openManualScamCase,
+                        onPressed:
+                            widget.onOpenPublishScamCase ?? openManualScamCase,
                         icon: const Icon(
                           Icons.add_location_alt_outlined,
                           size: 18,
@@ -514,7 +514,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         width: 230,
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
-                          value: selectedRisk,
+                          initialValue: selectedRisk,
                           decoration: const InputDecoration(
                             labelText: 'Risk level',
                           ),
@@ -545,7 +545,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         width: 280,
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
-                          value: currentCategory,
+                          initialValue: currentCategory,
                           decoration: const InputDecoration(
                             labelText: 'Category',
                           ),

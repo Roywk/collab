@@ -87,11 +87,26 @@ class VerifiedMerchantsScreen extends StatelessWidget {
               ],
               rows: [
                 _buildDataRow(
-                    'Grand Hyatt Kuala Lumpur', 'SSM-2023-8842', 'Hotel', '98/100', 'Verified'),
+                  'Grand Hyatt Kuala Lumpur',
+                  'SSM-2023-8842',
+                  'Hotel',
+                  '98/100',
+                  'Verified',
+                ),
                 _buildDataRow(
-                    'Pavilion Kuala Lumpur', 'SSM-2023-1120', 'Shopping Mall', '95/100', 'Verified'),
+                  'Pavilion Kuala Lumpur',
+                  'SSM-2023-1120',
+                  'Shopping Mall',
+                  '95/100',
+                  'Verified',
+                ),
                 _buildDataRow(
-                    'OldTown White Coffee', 'SSM-2023-0091', 'Restaurant', '92/100', 'Verified'),
+                  'OldTown White Coffee',
+                  'SSM-2023-0091',
+                  'Restaurant',
+                  '92/100',
+                  'Verified',
+                ),
               ],
             ),
           ),
@@ -101,35 +116,68 @@ class VerifiedMerchantsScreen extends StatelessWidget {
   }
 
   DataRow _buildDataRow(
-      String name, String reg, String cat, String score, String status) {
-    return DataRow(cells: [
-      DataCell(Text(name, style: const TextStyle(fontWeight: FontWeight.bold))),
-      DataCell(Text(reg)),
-      DataCell(Text(cat)),
-      DataCell(Text(score,
-          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
-      DataCell(
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4)),
-          child: Text(status,
-              style: const TextStyle(
-                  color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+    String name,
+    String reg,
+    String cat,
+    String score,
+    String status,
+  ) {
+    return DataRow(
+      cells: [
+        DataCell(
+          Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
-      ),
-      DataCell(Row(
-        children: [
-          IconButton(
-              icon: const Icon(Icons.edit_outlined, color: AppColors.blue, size: 20),
-              onPressed: () {}),
-          IconButton(
-              icon: const Icon(Icons.remove_moderator_outlined,
-                  color: Colors.red, size: 20),
-              onPressed: () {}),
-        ],
-      )),
-    ]);
+        DataCell(Text(reg)),
+        DataCell(Text(cat)),
+        DataCell(
+          Text(
+            score,
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              status,
+              style: const TextStyle(
+                color: Colors.green,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  color: AppColors.blue,
+                  size: 20,
+                ),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.remove_moderator_outlined,
+                  color: Colors.red,
+                  size: 20,
+                ),
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

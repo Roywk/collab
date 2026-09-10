@@ -249,7 +249,11 @@ class _AnalyticsCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: AppColors.slate, fontSize: 10, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: AppColors.slate,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -349,11 +353,11 @@ class _HeatmapPanel extends StatelessWidget {
                           point: LatLng(report.latitude, report.longitude),
                           radius: report.isVerified ? 30 : 18,
                           color: report.isVerified
-                              ? AppColors.red.withOpacity(0.3)
-                              : AppColors.amber.withOpacity(0.25),
+                              ? AppColors.red.withValues(alpha: 0.3)
+                              : AppColors.amber.withValues(alpha: 0.25),
                           borderColor: report.isVerified
-                              ? AppColors.red.withOpacity(0.6)
-                              : AppColors.amber.withOpacity(0.55),
+                              ? AppColors.red.withValues(alpha: 0.6)
+                              : AppColors.amber.withValues(alpha: 0.55),
                           borderStrokeWidth: 1,
                         ),
                     ],
@@ -448,7 +452,10 @@ class _HotspotLeaderboard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         entries[index].key,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

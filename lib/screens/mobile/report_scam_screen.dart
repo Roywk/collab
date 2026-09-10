@@ -21,7 +21,7 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
   final _customCategoryController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   final List<File> _evidenceFiles = [];
-  
+
   String _category = 'Taxi Touts';
   bool _isAnonymous = false;
   bool _isSubmitting = false;
@@ -53,9 +53,9 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
       }
     }
   }
@@ -72,7 +72,9 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Discard Changes?'),
-          content: const Text('You have unsaved changes. Are you sure you want to exit?'),
+          content: const Text(
+            'You have unsaved changes. Are you sure you want to exit?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -90,7 +92,10 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
     if (mounted) Navigator.pop(context);
   }
 
-  Future<void> _showResultDialog({required bool success, String? message}) async {
+  Future<void> _showResultDialog({
+    required bool success,
+    String? message,
+  }) async {
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -107,9 +112,10 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Text(
-          message ?? (success 
-            ? 'Your report has been submitted and is pending moderation. Thank you for keeping the community safe.' 
-            : 'Something went wrong while submitting your report. Please try again later.'),
+          message ??
+              (success
+                  ? 'Your report has been submitted and is pending moderation. Thank you for keeping the community safe.'
+                  : 'Something went wrong while submitting your report. Please try again later.'),
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 14),
         ),
@@ -129,7 +135,9 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.blue,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Text('View My Reports'),
                     ),
@@ -146,7 +154,9 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                       }
                     },
                     style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('OK'),
                   ),
@@ -166,10 +176,18 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Submission'),
-        content: const Text('Are you sure you want to submit this scam report?'),
+        content: const Text(
+          'Are you sure you want to submit this scam report?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Submit')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit'),
+          ),
         ],
       ),
     );
@@ -200,16 +218,17 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       await _showResultDialog(success: true);
-      
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      
+
       String errorMsg = e.toString();
-      if (errorMsg.contains('admin notes') || errorMsg.contains('admin_notes')) {
-        errorMsg = 'Database mapping error: Column "admin_notes" not found. Please notify the system administrator.';
+      if (errorMsg.contains('admin notes') ||
+          errorMsg.contains('admin_notes')) {
+        errorMsg =
+            'Database mapping error: Column "admin_notes" not found. Please notify the system administrator.';
       }
-      
+
       await _showResultDialog(success: false, message: errorMsg);
     }
   }
@@ -232,19 +251,35 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SwitchListTile(
-                title: const Text('Report Anonymously', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Your identity will be hidden on public maps'),
+                title: const Text(
+                  'Report Anonymously',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Your identity will be hidden on public maps',
+                ),
                 value: _isAnonymous,
-                onChanged: _isSubmitting ? null : (v) => setState(() => _isAnonymous = v),
+                onChanged: _isSubmitting
+                    ? null
+                    : (v) => setState(() => _isAnonymous = v),
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _category,
-                items: ['Taxi Touts', 'Fake Tickets', 'Overcharging', 'Pickpocket', 'Other']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: _isSubmitting ? null : (v) => setState(() => _category = v!),
+                initialValue: _category,
+                items:
+                    [
+                          'Taxi Touts',
+                          'Fake Tickets',
+                          'Overcharging',
+                          'Pickpocket',
+                          'Other',
+                        ]
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                onChanged: _isSubmitting
+                    ? null
+                    : (v) => setState(() => _category = v!),
                 decoration: const InputDecoration(
                   labelText: 'Scam Category',
                   border: OutlineInputBorder(),
@@ -260,7 +295,10 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                     hintText: 'e.g. Identity Theft, Rental Scam',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => (_category == 'Other' && (v == null || v.isEmpty)) ? 'Please specify' : null,
+                  validator: (v) =>
+                      (_category == 'Other' && (v == null || v.isEmpty))
+                      ? 'Please specify'
+                      : null,
                 ),
               ],
               const SizedBox(height: 16),
@@ -286,11 +324,15 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                 ),
                 keyboardType: TextInputType.number,
               ),
-              
+
               const SizedBox(height: 24),
               const Text(
                 'Evidence (Optional)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -298,7 +340,7 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                 style: TextStyle(fontSize: 12, color: AppColors.slate),
               ),
               const SizedBox(height: 12),
-              
+
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -328,7 +370,11 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                                   color: AppColors.red,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -343,21 +389,34 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.canvas,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.line, style: BorderStyle.solid),
+                          border: Border.all(
+                            color: AppColors.line,
+                            style: BorderStyle.solid,
+                          ),
                         ),
                         child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_a_photo_outlined, color: AppColors.blue),
+                            Icon(
+                              Icons.add_a_photo_outlined,
+                              color: AppColors.blue,
+                            ),
                             SizedBox(height: 4),
-                            Text('Add', style: TextStyle(fontSize: 10, color: AppColors.blue, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
                 ],
               ),
-              
+
               const SizedBox(height: 32),
               SizedBox(
                 height: 52,
@@ -365,17 +424,25 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                   onPressed: _isSubmitting ? null : _submit,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Text(
-                          'Submit Scam Report', 
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                          'Submit Scam Report',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),

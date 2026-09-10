@@ -13,10 +13,12 @@ class AwarenessArticleEditorScreen extends StatefulWidget {
   final AdminRepository repository;
 
   @override
-  State<AwarenessArticleEditorScreen> createState() => _AwarenessArticleEditorScreenState();
+  State<AwarenessArticleEditorScreen> createState() =>
+      _AwarenessArticleEditorScreenState();
 }
 
-class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScreen> {
+class _AwarenessArticleEditorScreenState
+    extends State<AwarenessArticleEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -52,8 +54,8 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
 
     setState(() => _saving = true);
     // In a real app, you would call repository.saveAwarenessArticle
-    await Future.delayed(const Duration(seconds: 1)); 
-    
+    await Future.delayed(const Duration(seconds: 1));
+
     if (!mounted) return;
     Navigator.pop(context, true);
   }
@@ -63,17 +65,28 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
     return Scaffold(
       backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text(widget.articleId == null ? 'Create Article' : 'Edit Article'),
+        title: Text(
+          widget.articleId == null ? 'Create Article' : 'Edit Article',
+        ),
         actions: [
           if (_saving)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             )
           else
             TextButton(
               onPressed: _save,
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Save',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           const SizedBox(width: 8),
         ],
@@ -94,11 +107,21 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Article Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                  const Text(
+                    'Article Details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.navy,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Article Title', hintText: 'e.g. How to spot fake tour guides'),
+                    decoration: const InputDecoration(
+                      labelText: 'Article Title',
+                      hintText: 'e.g. How to spot fake tour guides',
+                    ),
                     validator: (v) => v!.isEmpty ? 'Title is required' : null,
                   ),
                   const SizedBox(height: 20),
@@ -106,10 +129,15 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _category,
-                          decoration: const InputDecoration(labelText: 'Category'),
+                          initialValue: _category,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                          ),
                           items: ['Education', 'Alert', 'Emergency', 'Guide']
-                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
                               .toList(),
                           onChanged: (v) => setState(() => _category = v!),
                         ),
@@ -117,10 +145,15 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _status,
-                          decoration: const InputDecoration(labelText: 'Publication Status'),
+                          initialValue: _status,
+                          decoration: const InputDecoration(
+                            labelText: 'Publication Status',
+                          ),
                           items: ['Draft', 'Published', 'Archived']
-                              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                              .map(
+                                (s) =>
+                                    DropdownMenuItem(value: s, child: Text(s)),
+                              )
                               .toList(),
                           onChanged: (v) => setState(() => _status = v!),
                         ),
@@ -139,10 +172,20 @@ class _AwarenessArticleEditorScreenState extends State<AwarenessArticleEditorScr
                     validator: (v) => v!.isEmpty ? 'Content is required' : null,
                   ),
                   const SizedBox(height: 32),
-                  const Text('SEO & Metadata', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.slate)),
+                  const Text(
+                    'SEO & Metadata',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slate,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   const TextField(
-                    decoration: InputDecoration(labelText: 'Tags (Comma separated)', hintText: 'taxi, kuala lumpur, safety'),
+                    decoration: InputDecoration(
+                      labelText: 'Tags (Comma separated)',
+                      hintText: 'taxi, kuala lumpur, safety',
+                    ),
                   ),
                 ],
               ),

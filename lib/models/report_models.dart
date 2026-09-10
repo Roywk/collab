@@ -31,21 +31,21 @@ class ScamReport {
     DateTime? createdAt,
     this.updatedAt,
     this.statusHistory = const [],
-  }) : this.createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'category': category,
-        'description': description,
-        'latitude': latitude,
-        'longitude': longitude,
-        'location_name': locationName,
-        'amount_lost': amountLost,
-        'evidence_urls': evidenceUrls,
-        'is_anonymous': isAnonymous,
-        // Removed admin_notes and verification_status from toJson to fix PostgrestException.
-        // These columns are either missing or should be handled by the database/admin only.
-      };
+    'title': title,
+    'category': category,
+    'description': description,
+    'latitude': latitude,
+    'longitude': longitude,
+    'location_name': locationName,
+    'amount_lost': amountLost,
+    'evidence_urls': evidenceUrls,
+    'is_anonymous': isAnonymous,
+    // Removed admin_notes and verification_status from toJson to fix PostgrestException.
+    // These columns are either missing or should be handled by the database/admin only.
+  };
 }
 
 class ScamReportStatusHistory {
