@@ -5,6 +5,7 @@ import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import 'awareness_cms_screen.dart';
 import 'threat_database_screen.dart';
+import 'admin_scam_overview_screen.dart';
 
 class AdminGate extends StatefulWidget {
   const AdminGate({
@@ -65,7 +66,10 @@ class _AdminGateState extends State<AdminGate> {
               onSignOut: adminSignedOut,
             );
           }
-          return ThreatDatabaseScreen(
+          return AdminScamOverviewScreen(
+            repository: widget.repository,
+            onSignOut: adminSignedOut,
+          );
             repository: widget.repository,
             onSignOut: adminSignedOut,
           );

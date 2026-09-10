@@ -14,6 +14,7 @@ import '../../data/scam_map_repository.dart';
 import '../../data/learning_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/location_service.dart';
+import '../../services/landmark_search_service.dart';
 import '../../services/scam_alert_notification_service.dart';
 import 'learning/learning_home_screen.dart';
 
@@ -33,10 +34,15 @@ class ScamMapScreen extends StatefulWidget {
 
 class _ScamMapScreenState extends State<ScamMapScreen> {
   static const LatLng _kualaLumpur = LatLng(3.1390, 101.6869);
+  static final LatLngBounds _kualaLumpurBounds = LatLngBounds(
+    const LatLng(kualaLumpurMinimumLatitude, kualaLumpurMinimumLongitude),
+    const LatLng(kualaLumpurMaximumLatitude, kualaLumpurMaximumLongitude),
+  );
 
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   final LocationService _locationService = LocationService();
+  final LandmarkSearchService _landmarkSearchService = LandmarkSearchService();
   final ScamAlertNotificationService _notificationService =
       ScamAlertNotificationService();
 
@@ -46,11 +52,13 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
   String _selectedCategory = 'All';
   String? _locationMessage;
   String? _loadError;
-  ScamMapReport? _nearbyReport;
-  double? _nearbyDistance;
+  List<_NearbyHotspot> _nearbyHotspots = const [];
+  bool _dangerAlertActive = false;
   bool _loading = true;
   bool _loadedFromCache = false;
-  final Set<String> _alertedHotspots = {};
+  bool _searching = false;
+  bool _showList = false;
+  LandmarkSearchResult? _searchedLocation;
 
   @override
   void initState() {
@@ -62,6 +70,7 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
   @override
   void dispose() {
     _positionSubscription?.cancel();
+    _landmarkSearchService.close();
     _searchController.dispose();
     _mapController.dispose();
     super.dispose();
@@ -122,21 +131,34 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
 
   void _updatePosition(Position position, {bool moveCamera = false}) {
     if (!mounted) return;
+    final isInKualaLumpur = isCoordinateInKualaLumpur(
+      position.latitude,
+      position.longitude,
+    );
     setState(() {
       _position = position;
-      _locationMessage = null;
+      _locationMessage = isInKualaLumpur
+          ? null
+          : 'Your location is outside the Kuala Lumpur map area.';
     });
 
-    if (moveCamera) {
+    if (moveCamera && isInKualaLumpur) {
       _mapController.move(LatLng(position.latitude, position.longitude), 15);
     }
 
-    _evaluateProximity(position);
+    if (isInKualaLumpur) {
+      _evaluateProximity(position);
+    } else {
+      setState(() {
+        _nearbyHotspots = const [];
+        _dangerAlertActive = false;
+      });
+    }
   }
 
   void _evaluateProximity(Position position) {
-    ScamMapReport? nearest;
-    double? nearestDistance;
+    final nearby = <_NearbyHotspot>[];
+    var remainsInDangerArea = false;
 
     for (final report in _reports.where((report) => report.isVerified)) {
       final distance = haversineDistanceMeters(
@@ -146,25 +168,83 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
         endLongitude: report.longitude,
       );
 
-      if (nearestDistance == null || distance < nearestDistance) {
-        nearest = report;
-        nearestDistance = distance;
-      }
-
-      if (distance > 250) {
-        _alertedHotspots.remove(report.id);
-      }
+      if (distance <= 200) nearby.add(_NearbyHotspot(report, distance));
+      if (distance <= 250) remainsInDangerArea = true;
     }
 
-    final isWithinAlertRange = nearest != null && nearestDistance! <= 200;
-    setState(() {
-      _nearbyReport = isWithinAlertRange ? nearest : null;
-      _nearbyDistance = isWithinAlertRange ? nearestDistance : null;
-    });
+    nearby.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    setState(() => _nearbyHotspots = nearby);
 
-    if (isWithinAlertRange && _alertedHotspots.add(nearest.id)) {
-      _notificationService.showNearbyHotspot(nearest, nearestDistance);
+    if (nearby.isNotEmpty && !_dangerAlertActive) {
+      _dangerAlertActive = true;
+      final nearest = nearby.first;
+      unawaited(
+        _notificationService.showNearbyHotspots(
+          count: nearby.length,
+          nearestReport: nearest.report,
+          nearestDistanceMeters: nearest.distanceMeters,
+        ),
+      );
+    } else if (nearby.isEmpty && !remainsInDangerArea) {
+      _dangerAlertActive = false;
     }
+  }
+
+  void _showNearbyHotspots() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_nearbyHotspots.length} verified hotspot${_nearbyHotspots.length == 1 ? '' : 's'} within 200m',
+                style: const TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _nearbyHotspots.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final hotspot = _nearbyHotspots[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        backgroundColor: AppColors.redSoft,
+                        child: Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.red,
+                        ),
+                      ),
+                      title: Text(hotspot.report.title),
+                      subtitle: Text(
+                        '${hotspot.report.category} • ${hotspot.distanceMeters.round()}m away',
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _showReportDetails(hotspot.report);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   List<ScamMapReport> get _filteredReports {
@@ -182,7 +262,30 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
     return ['All', ...values];
   }
 
-  void _searchLocation() {
+  List<_ScamReportDistance> get _sortedReportsForList {
+    final items = _filteredReports.map((report) {
+      final position = _position;
+      final distance = position == null
+          ? null
+          : haversineDistanceMeters(
+              startLatitude: position.latitude,
+              startLongitude: position.longitude,
+              endLatitude: report.latitude,
+              endLongitude: report.longitude,
+            );
+      return _ScamReportDistance(report, distance);
+    }).toList();
+
+    items.sort((a, b) {
+      if (a.distanceMeters != null && b.distanceMeters != null) {
+        return a.distanceMeters!.compareTo(b.distanceMeters!);
+      }
+      return b.report.reportedAt.compareTo(a.report.reportedAt);
+    });
+    return items;
+  }
+
+  Future<void> _searchLocation() async {
     final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) return;
 
@@ -192,18 +295,40 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
           (report.locationName?.toLowerCase().contains(query) ?? false);
     }).toList();
 
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No recorded scams found for this location.'),
-        ),
-      );
+    if (matches.isNotEmpty) {
+      final report = matches.first;
+      _mapController.move(LatLng(report.latitude, report.longitude), 16);
+      _showReportDetails(report);
       return;
     }
 
-    final report = matches.first;
-    _mapController.move(LatLng(report.latitude, report.longitude), 16);
-    _showReportDetails(report);
+    setState(() => _searching = true);
+    try {
+      final places = await _landmarkSearchService.searchKualaLumpur(query);
+      if (!mounted) return;
+      if (places.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No Kuala Lumpur landmark or location found.'),
+          ),
+        );
+        return;
+      }
+
+      final place = places.first;
+      setState(() => _searchedLocation = place);
+      _mapController.move(LatLng(place.latitude, place.longitude), 16);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Showing ${place.name}')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
   }
 
   void _showReportDetails(ScamMapReport report) {
@@ -253,23 +378,29 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
       gpsActive: _position != null,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _searchLocation(),
-              decoration: InputDecoration(
-                hintText: 'Search landmark or street name...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  tooltip: 'Search map',
-                  onPressed: _searchLocation,
-                  icon: const Icon(Icons.arrow_forward_rounded),
+          if (!_showList)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _searchLocation(),
+                decoration: InputDecoration(
+                  hintText: 'Search landmark or street name...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    tooltip: 'Search map',
+                    onPressed: _searching ? null : _searchLocation,
+                    icon: _searching
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward_rounded),
+                  ),
                 ),
               ),
             ),
-          ),
           SizedBox(
             height: 42,
             child: ListView.separated(
@@ -291,11 +422,10 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
               },
             ),
           ),
-          if (_nearbyReport != null)
-            NearbyScamWarning(
-              report: _nearbyReport!,
-              distanceMeters: _nearbyDistance!,
-              onViewDetails: () => _showReportDetails(_nearbyReport!),
+          if (_nearbyHotspots.isNotEmpty)
+            _NearbyScamWarning(
+              hotspots: _nearbyHotspots,
+              onViewDetails: _showNearbyHotspots,
             ),
           if (_locationMessage != null)
             MapMessageBanner(
@@ -314,116 +444,370 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
           Expanded(
             child: Stack(
               children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: const MapOptions(
-                    initialCenter: _kualaLumpur,
-                    initialZoom: 12,
-                    minZoom: 5,
-                    maxZoom: 19,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.collab',
-                    ),
-                    if (_position != null)
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: LatLng(
-                              _position!.latitude,
-                              _position!.longitude,
-                            ),
-                            radius: 9,
-                            color: AppColors.blue.withValues(alpha: 0.25),
-                            borderColor: Colors.white,
-                            borderStrokeWidth: 2,
-                          ),
-                        ],
-                      ),
-                    MarkerClusterLayerWidget(
-                      options: MarkerClusterLayerOptions(
-                        maxClusterRadius: 48,
-                        size: const Size(44, 44),
-                        markers: _buildMarkers(),
-                        builder: (context, markers) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 8,
+                Positioned.fill(
+                  child: _showList
+                      ? _ScamReportList(
+                          reports: _sortedReportsForList,
+                          loading: _loading,
+                          error: _loadError,
+                          onRetry: _loadReports,
+                          onOpenReport: _showReportDetails,
+                        )
+                      : Stack(
+                          children: [
+                            FlutterMap(
+                              mapController: _mapController,
+                              options: MapOptions(
+                                initialCenter: _kualaLumpur,
+                                initialZoom: 12,
+                                minZoom: 11,
+                                maxZoom: 19,
+                                cameraConstraint: CameraConstraint.contain(
+                                  bounds: _kualaLumpurBounds,
                                 ),
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'com.example.collab',
+                                ),
+                                if (_position != null &&
+                                    isCoordinateInKualaLumpur(
+                                      _position!.latitude,
+                                      _position!.longitude,
+                                    ))
+                                  CircleLayer(
+                                    circles: [
+                                      CircleMarker(
+                                        point: LatLng(
+                                          _position!.latitude,
+                                          _position!.longitude,
+                                        ),
+                                        radius: 9,
+                                        color: AppColors.blue.withValues(
+                                          alpha: 0.25,
+                                        ),
+                                        borderColor: Colors.white,
+                                        borderStrokeWidth: 2,
+                                      ),
+                                    ],
+                                  ),
+                                MarkerClusterLayerWidget(
+                                  options: MarkerClusterLayerOptions(
+                                    maxClusterRadius: 48,
+                                    size: const Size(44, 44),
+                                    markers: _buildMarkers(),
+                                    builder: (context, markers) {
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: AppColors.blue,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 3,
+                                          ),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x33000000),
+                                              blurRadius: 8,
+                                            ),
+                                          ],
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '${markers.length}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                if (_searchedLocation != null)
+                                  MarkerLayer(
+                                    markers: [
+                                      Marker(
+                                        point: LatLng(
+                                          _searchedLocation!.latitude,
+                                          _searchedLocation!.longitude,
+                                        ),
+                                        width: 46,
+                                        height: 46,
+                                        child: const Tooltip(
+                                          message: 'Searched location',
+                                          child: Icon(
+                                            Icons.place,
+                                            color: AppColors.blue,
+                                            size: 42,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                               ],
                             ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${markers.length}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
+                            Positioned(
+                              left: 10,
+                              bottom: 10,
+                              child: const ScamStatusLegend(),
+                            ),
+                            Positioned(
+                              right: 10,
+                              bottom: 10,
+                              child: FloatingActionButton.small(
+                                heroTag: 'locate-user',
+                                tooltip: 'My location',
+                                onPressed: _startLocationTracking,
+                                child: const Icon(Icons.my_location),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                Positioned(
-                  left: 10,
-                  bottom: 10,
-                  child: const ScamStatusLegend(),
-                ),
-                Positioned(
-                  right: 10,
-                  bottom: 10,
-                  child: FloatingActionButton.small(
-                    heroTag: 'locate-user',
-                    tooltip: 'My location',
-                    onPressed: _startLocationTracking,
-                    child: const Icon(Icons.my_location),
-                  ),
-                ),
-                if (_loading)
-                  const ColoredBox(
-                    color: Color(0x55FFFFFF),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                if (_loadError != null)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: SurfaceCard(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.cloud_off, color: AppColors.red),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Scam map data could not be loaded.',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            FilledButton(
-                              onPressed: _loadReports,
-                              child: const Text('Try Again'),
-                            ),
+                            if (_loading)
+                              const ColoredBox(
+                                color: Color(0x55FFFFFF),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            if (_loadError != null)
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: SurfaceCard(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.cloud_off,
+                                          color: AppColors.red,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Scam map data could not be loaded.',
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        FilledButton(
+                                          onPressed: _loadReports,
+                                          child: const Text('Try Again'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: FloatingActionButton.small(
+                    heroTag: 'toggle-map-list',
+                    tooltip: _showList ? 'Show map' : 'Show scam list',
+                    onPressed: () => setState(() => _showList = !_showList),
+                    child: Icon(
+                      _showList ? Icons.map_outlined : Icons.list_alt_rounded,
                     ),
                   ),
+                ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ScamReportDistance {
+  const _ScamReportDistance(this.report, this.distanceMeters);
+
+  final ScamMapReport report;
+  final double? distanceMeters;
+}
+
+class _ScamReportList extends StatelessWidget {
+  const _ScamReportList({
+    required this.reports,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+    required this.onOpenReport,
+  });
+
+  final List<_ScamReportDistance> reports;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+  final ValueChanged<ScamMapReport> onOpenReport;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator());
+    if (error != null) {
+      return Center(
+        child: FilledButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Try Again'),
+        ),
+      );
+    }
+    if (reports.isEmpty) {
+      return const Center(child: Text('No verified scams in this category.'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => onRetry(),
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(12, 64, 12, 24),
+        itemCount: reports.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final item = reports[index];
+          final report = item.report;
+          return Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => onOpenReport(report),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        width: 78,
+                        height: 78,
+                        child: report.evidenceUrls.isEmpty
+                            ? const ColoredBox(
+                                color: AppColors.redSoft,
+                                child: Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: AppColors.red,
+                                  size: 32,
+                                ),
+                              )
+                            : Image.network(
+                                report.evidenceUrls.first,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const ColoredBox(
+                                  color: AppColors.redSoft,
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    color: AppColors.red,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  report.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.navy,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.verified,
+                                color: AppColors.red,
+                                size: 17,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            report.category,
+                            style: const TextStyle(
+                              color: AppColors.slate,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 4,
+                            children: [
+                              if (item.distanceMeters != null)
+                                _ScamListFact(
+                                  icon: Icons.near_me_outlined,
+                                  text: _formatDistance(item.distanceMeters!),
+                                ),
+                              if ((report.amountLost ?? 0) > 0)
+                                _ScamListFact(
+                                  icon: Icons.payments_outlined,
+                                  text: NumberFormat.currency(
+                                    locale: 'en_MY',
+                                    symbol: 'RM ',
+                                    decimalDigits: 2,
+                                  ).format(report.amountLost),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static String _formatDistance(double meters) {
+    if (meters < 1000) return '${meters.round()}m away';
+    return '${(meters / 1000).toStringAsFixed(1)}km away';
+  }
+}
+
+class _ScamListFact extends StatelessWidget {
+  const _ScamListFact({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.blue),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.blue,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -509,20 +893,21 @@ class _LegendRow extends StatelessWidget {
   }
 }
 
-class NearbyScamWarning extends StatelessWidget {
-  const NearbyScamWarning({
-    required this.report,
-    required this.distanceMeters,
+class _NearbyScamWarning extends StatelessWidget {
+  const _NearbyScamWarning({
+    required this.hotspots,
     required this.onViewDetails,
-    super.key,
   });
 
-  final ScamMapReport report;
-  final double distanceMeters;
+  final List<_NearbyHotspot> hotspots;
   final VoidCallback onViewDetails;
 
   @override
   Widget build(BuildContext context) {
+    final nearest = hotspots.first;
+    final message = hotspots.length == 1
+        ? '${nearest.report.title} is ${nearest.distanceMeters.round()}m away.'
+        : '${hotspots.length} verified scam hotspots within 200m. Nearest: ${nearest.distanceMeters.round()}m.';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -537,7 +922,7 @@ class NearbyScamWarning extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Scam Alert: ${report.title} is ${distanceMeters.round()}m away.',
+              'Scam Alert: $message',
               style: const TextStyle(
                 color: AppColors.red,
                 fontSize: 10,
@@ -550,6 +935,13 @@ class NearbyScamWarning extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NearbyHotspot {
+  const _NearbyHotspot(this.report, this.distanceMeters);
+
+  final ScamMapReport report;
+  final double distanceMeters;
 }
 
 class MapMessageBanner extends StatelessWidget {
@@ -598,7 +990,7 @@ class ScamMapDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = report.isVerified ? AppColors.red : AppColors.amber;
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -648,6 +1040,42 @@ class ScamMapDetailSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            if (report.evidenceUrls.isNotEmpty) ...[
+              SizedBox(
+                height: 180,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: PageView.builder(
+                    itemCount: report.evidenceUrls.length,
+                    itemBuilder: (context, index) => Image.network(
+                      report.evidenceUrls[index],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: AppColors.blueSoft,
+                        alignment: Alignment.center,
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.slate,
+                              size: 34,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Photo unavailable',
+                              style: TextStyle(color: AppColors.slate),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             Text(
               report.title,
               style: const TextStyle(
@@ -673,6 +1101,53 @@ class ScamMapDetailSheet extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(child: Text(report.locationName!)),
                 ],
+              ),
+            ],
+            if ((report.amountLost ?? 0) > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.red.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.payments_outlined, color: AppColors.red),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Reported amount lost',
+                          style: TextStyle(
+                            color: AppColors.slate,
+                            fontSize: 10,
+                          ),
+                        ),
+                        Text(
+                          NumberFormat.currency(
+                            locale: 'en_MY',
+                            symbol: 'RM ',
+                            decimalDigits: 2,
+                          ).format(report.amountLost),
+                          style: const TextStyle(
+                            color: AppColors.red,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 14),

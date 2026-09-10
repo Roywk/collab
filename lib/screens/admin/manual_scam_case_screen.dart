@@ -26,20 +26,15 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   final _locationController = TextEditingController();
   final _sourceController = TextEditingController();
 
-  String _category = 'Taxi Tout';
+  late Future<List<String>> _categoriesFuture;
+  String _category = ScamCategories.taxi;
   bool _saving = false;
 
-  static const _categories = [
-    'Taxi Tout',
-    'Pickpocket',
-    'Overcharging',
-    'Photo Scam',
-    'Transport Scam',
-    'QR Code Fraud',
-    'Fake Services',
-    'Phishing',
-    'Other',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _categoriesFuture = widget.repository.getActiveCategories();
+  }
 
   @override
   void dispose() {
@@ -55,12 +50,12 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   double? get _latitude => double.tryParse(_latitudeController.text.trim());
   double? get _longitude => double.tryParse(_longitudeController.text.trim());
 
-  bool get _coordinatesAreInMalaysia {
+  bool get _coordinatesAreInKualaLumpur {
     final latitude = _latitude;
     final longitude = _longitude;
     return latitude != null &&
         longitude != null &&
-        isCoordinateInMalaysia(latitude, longitude);
+        isCoordinateInKualaLumpur(latitude, longitude);
   }
 
   String? _validateCoordinate(String? value, {required bool latitude}) {
@@ -94,12 +89,12 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   Future<void> _publish() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (!_coordinatesAreInMalaysia) {
+    if (!_coordinatesAreInKualaLumpur) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Coordinates must be within Malaysian borders '
-            '(0.85°N-7.36°N, 99.64°E-119.27°E).',
+            'Coordinates must be within the Kuala Lumpur pilot area '
+            '(3.03°N-3.25°N, 101.60°E-101.80°E).',
           ),
         ),
       );
@@ -135,7 +130,7 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Scam Moderation',
+      selectedMenuItem: 'Scam Report Moderation',
       onBack: () => Navigator.of(context).pop(),
       onOpenThreatDatabase: () => Navigator.of(context).pop(),
       child: SingleChildScrollView(
@@ -196,20 +191,35 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
                       builder: (context, constraints) {
                         final category = _AdminFormField(
                           label: 'CATEGORY *',
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _category,
-                            items: _categories
-                                .map(
-                                  (category) => DropdownMenuItem(
-                                    value: category,
-                                    child: Text(category),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() => _category = value);
+                          child: FutureBuilder<List<String>>(
+                            future: _categoriesFuture,
+                            builder: (context, snapshot) {
+                              final categories =
+                                  snapshot.data ?? ScamCategories.values;
+                              if (!categories.contains(_category)) {
+                                _category = categories.first;
                               }
+
+                              return DropdownButtonFormField<String>(
+                                isExpanded: true,
+                                initialValue: _category,
+                                items: categories
+                                    .map(
+                                      (category) => DropdownMenuItem(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _category = value);
+                                  }
+                                },
+                              );
                             },
                           ),
                         );
@@ -319,18 +329,18 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _coordinatesAreInMalaysia
-                          ? '● Valid — within Malaysian borders'
-                          : 'Malaysia bounds: 0.85°N-7.36°N, 99.64°E-119.27°E',
+                      _coordinatesAreInKualaLumpur
+                          ? '● Valid — within Kuala Lumpur'
+                          : 'KL bounds: 3.03°N-3.25°N, 101.60°E-101.80°E',
                       style: TextStyle(
-                        color: _coordinatesAreInMalaysia
+                        color: _coordinatesAreInKualaLumpur
                             ? AppColors.green
                             : AppColors.muted,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (_coordinatesAreInMalaysia) ...[
+                    if (_coordinatesAreInKualaLumpur) ...[
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),

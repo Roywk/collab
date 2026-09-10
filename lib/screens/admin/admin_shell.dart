@@ -32,8 +32,6 @@ class AdminShell extends StatelessWidget {
   final TextEditingController? searchController;
   final ValueChanged<String>? onSearchChanged;
   final String selectedMenuItem;
-
-  final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onOpenPublishScamCase;
@@ -341,6 +339,9 @@ class AdminSidebar extends StatelessWidget {
                             case 'Reports Moderation':
                               onOpenReports?.call();
                               break;
+                            case 'Scam Report Moderation':
+                              onPublishScamCase?.call();
+                              break;
                             case 'Threat Database':
                               onOpenThreatDatabase?.call();
                               break;
@@ -392,6 +393,11 @@ class AdminSidebar extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+
+              ],
+            ),
+          ),
                   ),
               ],
             ),
