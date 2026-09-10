@@ -17,6 +17,7 @@ import 'screens/mobile/report_scam_screen.dart';
 import 'screens/mobile/scam_map_screen.dart';
 import 'screens/mobile/user_profile_screen.dart';
 import 'screens/mobile/verification_home_screen.dart';
+import 'screens/mobile/scam_report_history_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,6 +84,7 @@ class Visit1MyApp extends StatelessWidget {
           repository: ScamMapRepository(client: accountRepository.client),
         ),
         '/report': (context) => const ReportScamScreen(),
+        '/report-history': (context) => const ScamReportHistoryScreen(),
         '/emergency': (context) => EmergencyDashboardScreen(
           repository: SupabaseEmergencyRepository(
             client: accountRepository.client,
