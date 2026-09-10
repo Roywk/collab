@@ -11,6 +11,7 @@ import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/sos_repository.dart';
 import '../../models/sos_models.dart';
+import '../../services/address_lookup_service.dart';
 import '../../services/location_service.dart';
 import '../../services/sos_share_service.dart';
 
@@ -29,12 +30,15 @@ class SosLocationScreen extends StatefulWidget {
 }
 
 class _SosLocationScreenState extends State<SosLocationScreen> {
+  final AddressLookupService _addressLookupService = AddressLookupService();
   late final LocationService _locationService =
       widget.locationService ?? LocationService();
 
   EmergencyContact? _contact;
   Position? _position;
+  String? _address;
   String? _error;
+  bool _loadingAddress = true;
   bool _loading = true;
   bool _sharing = false;
 
@@ -44,10 +48,18 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
     unawaited(_loadReadyState());
   }
 
+  @override
+  void dispose() {
+    _addressLookupService.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadReadyState() async {
     setState(() {
       _loading = true;
       _error = null;
+      _address = null;
+      _loadingAddress = true;
     });
 
     try {
@@ -63,12 +75,14 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
         _contact = contact;
         _position = position;
         _loading = false;
+        _loadingAddress = true;
         if (contact == null) {
           _error =
               'No emergency contact was found. Add a primary emergency '
               'contact to your account before using SOS.';
         }
       });
+      unawaited(_loadAddress(position));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -76,6 +90,18 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _loadAddress(Position position) async {
+    final address = await _addressLookupService.addressFromCoordinates(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+    if (!mounted || _position != position) return;
+    setState(() {
+      _address = address;
+      _loadingAddress = false;
+    });
   }
 
   Future<void> _shareLocation() async {
@@ -87,6 +113,7 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
     final message = buildSosMessage(
       latitude: position.latitude,
       longitude: position.longitude,
+      address: _address,
     );
 
     try {
@@ -125,6 +152,7 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
           builder: (_) => SosShareOpenedScreen(
             contact: contact,
             position: position,
+            address: _address,
             channel: channel,
             openedAt: DateTime.now(),
           ),
@@ -161,6 +189,8 @@ class _SosLocationScreenState extends State<SosLocationScreen> {
           : _SosReadyContent(
               contact: _contact!,
               position: _position!,
+              address: _address,
+              loadingAddress: _loadingAddress,
               sharing: _sharing,
               onShare: _shareLocation,
             ),
@@ -181,12 +211,16 @@ class _SosReadyContent extends StatelessWidget {
   const _SosReadyContent({
     required this.contact,
     required this.position,
+    required this.address,
+    required this.loadingAddress,
     required this.sharing,
     required this.onShare,
   });
 
   final EmergencyContact contact;
   final Position position;
+  final String? address;
+  final bool loadingAddress;
   final bool sharing;
   final VoidCallback onShare;
 
@@ -195,6 +229,7 @@ class _SosReadyContent extends StatelessWidget {
     final message = buildSosMessage(
       latitude: position.latitude,
       longitude: position.longitude,
+      address: address,
     );
     final coordinateLabel =
         '${position.latitude.toStringAsFixed(6)}, '
@@ -292,6 +327,41 @@ class _SosReadyContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 9),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.home_work_outlined,
+                    color: AppColors.blue,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      loadingAddress
+                          ? 'Finding full address...'
+                          : address ?? 'Full address unavailable',
+                      style: const TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!loadingAddress && address != null) ...[
+                const SizedBox(height: 3),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Address © OpenStreetMap contributors',
+                    style: TextStyle(color: AppColors.slate, fontSize: 7),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 7),
               Row(
                 children: [
                   const Icon(
@@ -528,6 +598,7 @@ class SosShareOpenedScreen extends StatelessWidget {
   const SosShareOpenedScreen({
     required this.contact,
     required this.position,
+    required this.address,
     required this.channel,
     required this.openedAt,
     super.key,
@@ -535,6 +606,7 @@ class SosShareOpenedScreen extends StatelessWidget {
 
   final EmergencyContact contact;
   final Position position;
+  final String? address;
   final SosShareChannel channel;
   final DateTime openedAt;
 
@@ -602,8 +674,10 @@ class SosShareOpenedScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 11),
                 KeyValueRow(label: 'Opened For', value: contact.name),
+                if (address != null)
+                  KeyValueRow(label: 'Address', value: address!),
                 KeyValueRow(
-                  label: 'Location',
+                  label: 'GPS Coordinates',
                   value:
                       '${position.latitude.toStringAsFixed(5)}, '
                       '${position.longitude.toStringAsFixed(5)}',
