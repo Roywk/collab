@@ -15,11 +15,27 @@ class ThreatDatabaseScreen extends StatefulWidget {
   const ThreatDatabaseScreen({
     required this.repository,
     required this.onSignOut,
+    this.onOpenDashboard,
+    this.onOpenReports,
+    this.onOpenHeatmap,
+    this.onOpenPublishScamCase,
+    this.onOpenVerifiedMerchants,
+    this.onOpenThreatDatabase,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
     super.key,
   });
 
   final AdminRepository repository;
   final Future<void> Function() onSignOut;
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenReports;
+  final VoidCallback? onOpenHeatmap;
+  final VoidCallback? onOpenPublishScamCase;
+  final VoidCallback? onOpenVerifiedMerchants;
+  final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<ThreatDatabaseScreen> createState() {
@@ -80,15 +96,25 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
       ScamMapRepository(client: widget.repository.client);
 
   Future<void> openThreatHeatmap() async {
+    if (widget.onOpenHeatmap != null) {
+      widget.onOpenHeatmap!();
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) =>
-            ThreatHeatmapScreen(repository: _scamMapRepository),
+        builder: (context) => ThreatHeatmapScreen(
+          repository: _scamMapRepository,
+          onSignOut: widget.onSignOut,
+        ),
       ),
     );
   }
 
   Future<void> openManualScamCase() async {
+    if (widget.onOpenPublishScamCase != null) {
+      widget.onOpenPublishScamCase!();
+      return;
+    }
     final published = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (context) =>
@@ -124,9 +150,9 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
           title: const Text('Deactivate Threat Record?'),
           content: Text(
             '${record.recordCode} – '
-            '${record.businessName}\n\n'
-            'The record will be removed from public '
-            'searches but retained for auditing.',
+                '${record.businessName}\n\n'
+                'The record will be removed from public '
+                'searches but retained for auditing.',
             textAlign: TextAlign.center,
           ),
           actionsAlignment: MainAxisAlignment.center,
@@ -181,19 +207,19 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
     return records.where((record) {
       final matchesSearch =
           query.isEmpty ||
-          record.recordCode.toLowerCase().contains(query) ||
-          record.businessName.toLowerCase().contains(query) ||
-          (record.phone?.toLowerCase().contains(query) ?? false) ||
-          (record.email?.toLowerCase().contains(query) ?? false) ||
-          (record.officialUrl?.toLowerCase().contains(query) ?? false);
+              record.recordCode.toLowerCase().contains(query) ||
+              record.businessName.toLowerCase().contains(query) ||
+              (record.phone?.toLowerCase().contains(query) ?? false) ||
+              (record.email?.toLowerCase().contains(query) ?? false) ||
+              (record.officialUrl?.toLowerCase().contains(query) ?? false);
 
       final matchesRisk =
           selectedRisk == 'All Risk Levels' ||
-          record.riskLevel.label == selectedRisk;
+              record.riskLevel.label == selectedRisk;
 
       final matchesCategory =
           selectedCategory == 'All Categories' ||
-          record.category == selectedCategory;
+              record.category == selectedCategory;
 
       return matchesSearch && matchesRisk && matchesCategory;
     }).toList();
@@ -207,8 +233,14 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Threat Database',
-      onOpenHeatmap: openThreatHeatmap,
-      onPublishScamCase: openManualScamCase,
+      onOpenDashboard: widget.onOpenDashboard,
+      onOpenReports: widget.onOpenReports,
+      onOpenHeatmap: widget.onOpenHeatmap ?? openThreatHeatmap,
+      onOpenPublishScamCase: widget.onOpenPublishScamCase ?? openManualScamCase,
+      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
+      onOpenThreatDatabase: widget.onOpenThreatDatabase,
+      onOpenAwarenessCms: widget.onOpenAwarenessCms,
+      onOpenSettings: widget.onOpenSettings,
       searchController: searchController,
       onSearchChanged: (value) {
         setState(() {
@@ -307,7 +339,7 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                         SizedBox(height: 4),
                         Text(
                           'Manage suspicious businesses, '
-                          'URLs and payment QR destinations.',
+                              'URLs and payment QR destinations.',
                           style: TextStyle(
                             color: AppColors.slate,
                             fontSize: 12,
@@ -454,21 +486,20 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Risk level',
                           ),
-                          items:
-                              const [
-                                'All Risk Levels',
-                                'Safe',
-                                'Suspicious',
-                                'High Risk',
-                              ].map((risk) {
-                                return DropdownMenuItem<String>(
-                                  value: risk,
-                                  child: Text(
-                                    risk,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
+                          items: const [
+                            'All Risk Levels',
+                            'Safe',
+                            'Suspicious',
+                            'High Risk',
+                          ].map((risk) {
+                            return DropdownMenuItem<String>(
+                              value: risk,
+                              child: Text(
+                                risk,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
                           onChanged: (value) {
                             setState(() {
                               selectedRisk = value ?? selectedRisk;
@@ -720,7 +751,7 @@ class ThreatRecordCards extends StatelessWidget {
             ),
             title: Text(
               '${records[index].recordCode} • '
-              '${records[index].businessName}',
+                  '${records[index].businessName}',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
             subtitle: Padding(
@@ -735,7 +766,7 @@ class ThreatRecordCards extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${records[index].category} • '
-                      '${records[index].reportCount} reports',
+                          '${records[index].reportCount} reports',
                       style: const TextStyle(fontSize: 10),
                     ),
                   ),
