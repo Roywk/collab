@@ -16,7 +16,15 @@ class VerificationResultScreen extends StatelessWidget {
   final VerificationRepository repository;
   final ThreatRecord record;
 
+  bool get isUnknown => record.id.isEmpty;
+
+  bool get isApproximateMatch => !isUnknown && record.matchDistance > 0;
+
   Color get riskColor {
+    if (isUnknown) {
+      return AppColors.blue;
+    }
+
     switch (record.riskLevel) {
       case RiskLevel.safe:
         return AppColors.green;
@@ -28,6 +36,10 @@ class VerificationResultScreen extends StatelessWidget {
   }
 
   Color get riskBackground {
+    if (isUnknown) {
+      return AppColors.blueSoft;
+    }
+
     switch (record.riskLevel) {
       case RiskLevel.safe:
         return AppColors.greenSoft;
@@ -40,7 +52,19 @@ class VerificationResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSafe = record.riskLevel == RiskLevel.safe;
+    final isSafe = !isUnknown && record.riskLevel == RiskLevel.safe;
+
+    final detailsTitle = isUnknown
+        ? 'Search Details'
+        : isSafe
+        ? 'Official Record Details'
+        : 'Reported Entity Details';
+
+    final entityLabel = isUnknown
+        ? 'Search Query'
+        : isSafe
+        ? 'Entity Name'
+        : 'Reported Name';
 
     return MobileShell(
       title: 'Verification Detail',
@@ -61,7 +85,9 @@ class VerificationResultScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isSafe
+                    isUnknown
+                        ? Icons.help_outline_rounded
+                        : isSafe
                         ? Icons.verified_user_outlined
                         : Icons.warning_amber_rounded,
                     color: riskColor,
@@ -86,28 +112,87 @@ class VerificationResultScreen extends StatelessWidget {
                   style: const TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
                 const SizedBox(height: 10),
-                RiskBadge(riskLevel: record.riskLevel),
+
+                if (isUnknown)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.blueSoft,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: const Text(
+                      'UNKNOWN • NO MATCH',
+                      style: TextStyle(
+                        color: AppColors.blue,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  )
+                else
+                  RiskBadge(riskLevel: record.riskLevel),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
+
+          if (isApproximateMatch) ...[
+            SurfaceCard(
+              color: AppColors.blueSoft,
+              borderColor: AppColors.blue,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.auto_awesome, color: AppColors.blue),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Approximate match found',
+                          style: TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Fuzzy search found this record with '
+                          '${record.matchDistance} character '
+                          'difference'
+                          '${record.matchDistance == 1 ? '' : 's'}.',
+                          style: const TextStyle(
+                            color: AppColors.slate,
+                            fontSize: 11,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isSafe
-                      ? 'Official Record Details'
-                      : 'Reported Entity Details',
+                  detailsTitle,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 9),
 
-                KeyValueRow(
-                  label: isSafe ? 'Entity Name' : 'Reported Name',
-                  value: record.businessName,
-                ),
+                KeyValueRow(label: entityLabel, value: record.businessName),
 
                 if ((record.phone ?? '').isNotEmpty)
                   KeyValueRow(label: 'Phone', value: record.phone!),
@@ -121,7 +206,8 @@ class VerificationResultScreen extends StatelessWidget {
                 if ((record.locationTag ?? '').isNotEmpty)
                   KeyValueRow(label: 'Location', value: record.locationTag!),
 
-                KeyValueRow(label: 'Category', value: record.category),
+                if (!isUnknown)
+                  KeyValueRow(label: 'Category', value: record.category),
 
                 if (record.flaggedActivities.isNotEmpty)
                   KeyValueRow(
@@ -141,7 +227,49 @@ class VerificationResultScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          if (isSafe)
+          if (isUnknown)
+            SurfaceCard(
+              color: AppColors.blueSoft,
+              borderColor: AppColors.blue,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: AppColors.blue,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No matching threat record found',
+                          style: TextStyle(
+                            color: AppColors.blue,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 9),
+                  Text(
+                    'This result is Unknown, not Safe. The absence '
+                    'of a database match does not guarantee that '
+                    'the business is legitimate. Check the spelling '
+                    'and continue carefully.',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 11,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (isSafe)
             SurfaceCard(
               color: AppColors.greenCanvas,
               borderColor: AppColors.greenSoft,
@@ -216,20 +344,18 @@ class VerificationResultScreen extends StatelessWidget {
               label: 'View Scam History',
               icon: Icons.history,
               color: riskColor,
-              onPressed: record.id.isEmpty
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) {
-                            return ScamHistoryScreen(
-                              repository: repository,
-                              record: record,
-                            );
-                          },
-                        ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) {
+                      return ScamHistoryScreen(
+                        repository: repository,
+                        record: record,
                       );
                     },
+                  ),
+                );
+              },
             ),
           ],
 

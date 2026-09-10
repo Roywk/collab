@@ -9,7 +9,7 @@ class AdminShell extends StatelessWidget {
     this.onSignOut,
     this.searchController,
     this.onSearchChanged,
-    this.selectedMenuItem = 'Scam Moderation',
+    this.selectedMenuItem = 'Threat Database',
     this.onOpenHeatmap,
     this.onPublishScamCase,
     this.onOpenThreatDatabase,
@@ -237,7 +237,8 @@ class AdminSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     const menuItems = [
       (Icons.dashboard_outlined, 'Dashboard Overview'),
-      (Icons.flag_outlined, 'Scam Moderation'),
+      (Icons.fact_check_outlined, 'Scam Report Moderation'),
+      (Icons.shield_outlined, 'Threat Database'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
       (Icons.verified_outlined, 'Verified Merchants'),
       (Icons.phone_outlined, 'Bank Hotline Mgmt'),
@@ -306,7 +307,7 @@ class AdminSidebar extends StatelessWidget {
                       case 'Geospatial Heatmap':
                         onOpenHeatmap?.call();
                         break;
-                      case 'Scam Moderation':
+                      case 'Threat Database':
                         onOpenThreatDatabase?.call();
                         break;
                       case 'Bank Hotline Mgmt':
