@@ -64,9 +64,9 @@ create policy "Admins can publish official scam cases"
     and published_by = auth.uid()
     and exists (
       select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+      from public.admin_accounts
+      where admin_accounts.id = auth.uid()
+        and admin_accounts.is_active = true
     )
   );
 
@@ -78,16 +78,16 @@ create policy "Admins can update official scam cases"
   using (
     exists (
       select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+      from public.admin_accounts
+      where admin_accounts.id = auth.uid()
+        and admin_accounts.is_active = true
     )
   )
   with check (
     exists (
       select 1
-      from public.profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+      from public.admin_accounts
+      where admin_accounts.id = auth.uid()
+        and admin_accounts.is_active = true
     )
   );
