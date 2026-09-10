@@ -6,11 +6,41 @@ abstract interface class IncidentReportRepository {
   Future<TranslatedIncidentReport> translateAndSave(IncidentReportDraft draft);
 }
 
-class SupabaseIncidentReportRepository implements IncidentReportRepository {
+abstract interface class IncidentReportHistoryRepository {
+  Future<List<TranslatedIncidentReport>> getTranslatedReports();
+}
+
+class SupabaseIncidentReportRepository
+    implements IncidentReportRepository, IncidentReportHistoryRepository {
   SupabaseIncidentReportRepository({SupabaseClient? client})
     : client = client ?? Supabase.instance.client;
 
   final SupabaseClient client;
+
+  @override
+  Future<List<TranslatedIncidentReport>> getTranslatedReports() async {
+    final user = client.auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      throw const AuthException('Sign in to view translated reports.');
+    }
+
+    final response = await client
+        .from('incident_reports')
+        .select(
+          'id, report_reference, input_language, incident_at, source_report, '
+          'english_report, malay_report, created_at',
+        )
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false);
+
+    return (response as List)
+        .map(
+          (row) => TranslatedIncidentReport.fromDatabaseJson(
+            Map<String, dynamic>.from(row as Map),
+          ),
+        )
+        .toList(growable: false);
+  }
 
   @override
   Future<TranslatedIncidentReport> translateAndSave(

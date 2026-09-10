@@ -110,6 +110,46 @@ class TranslatedIncidentReport {
   final IncidentReportDraft draft;
   final LocalizedIncidentReport english;
   final LocalizedIncidentReport malay;
+
+  factory TranslatedIncidentReport.fromDatabaseJson(Map<String, dynamic> json) {
+    final source = _jsonObject(json['source_report']);
+    final inputLanguage = json['input_language']?.toString() == 'ms'
+        ? ReportInputLanguage.malay
+        : ReportInputLanguage.english;
+
+    return TranslatedIncidentReport(
+      id: json['id']?.toString() ?? '',
+      reference: json['report_reference']?.toString() ?? '—',
+      generatedAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      draft: IncidentReportDraft(
+        incidentType: source['incident_type']?.toString() ?? '',
+        incidentAt:
+            DateTime.tryParse(json['incident_at']?.toString() ?? '') ??
+            DateTime.now(),
+        location: source['location']?.toString() ?? '',
+        description: source['description']?.toString() ?? '',
+        peopleInvolved: source['people_involved']?.toString() ?? '',
+        lostItems: source['lost_items']?.toString() ?? '',
+        additionalInformation:
+            source['additional_information']?.toString() ?? '',
+        inputLanguage: inputLanguage,
+      ),
+      english: LocalizedIncidentReport.fromJson(
+        _jsonObject(json['english_report']),
+      ),
+      malay: LocalizedIncidentReport.fromJson(
+        _jsonObject(json['malay_report']),
+      ),
+    );
+  }
+
+  static Map<String, dynamic> _jsonObject(dynamic value) {
+    return value is Map
+        ? Map<String, dynamic>.from(value)
+        : <String, dynamic>{};
+  }
 }
 
 class GeneratedIncidentPdf {

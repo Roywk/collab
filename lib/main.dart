@@ -79,14 +79,21 @@ class Visit1MyApp extends StatelessWidget {
         '/admin': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
         ),
+        '/admin': (context) => AdminGate(
+          repository: AdminRepository(client: accountRepository.client),
+        ),
         '/admin/awareness': (context) => AdminGate(
           repository: AdminRepository(client: accountRepository.client),
           initialAwareness: true,
         ),
         '/learn': (context) =>
             LearningHomeScreen(repository: learningRepository),
-        '/profile': (context) =>
-            UserProfileScreen(repository: accountRepository),
+        '/profile': (context) => UserProfileScreen(
+          repository: accountRepository,
+          incidentReportRepository: SupabaseIncidentReportRepository(
+            client: accountRepository.client,
+          ),
+        ),
         '/verify': (context) => VerificationHomeScreen(
           repository: verificationRepository,
           learningRepository: learningRepository,
