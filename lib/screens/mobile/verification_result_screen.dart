@@ -54,18 +54,6 @@ class VerificationResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSafe = !isUnknown && record.riskLevel == RiskLevel.safe;
 
-    final detailsTitle = isUnknown
-        ? 'Search Details'
-        : isSafe
-        ? 'Official Record Details'
-        : 'Reported Entity Details';
-
-    final entityLabel = isUnknown
-        ? 'Search Query'
-        : isSafe
-        ? 'Entity Name'
-        : 'Reported Name';
-
     return MobileShell(
       title: 'Verification Detail',
       onBack: () => Navigator.of(context).pop(),
@@ -112,7 +100,6 @@ class VerificationResultScreen extends StatelessWidget {
                   style: const TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
                 const SizedBox(height: 10),
-
                 if (isUnknown)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -137,7 +124,6 @@ class VerificationResultScreen extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
 
           if (isApproximateMatch) ...[
@@ -164,8 +150,7 @@ class VerificationResultScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           'Fuzzy search found this record with '
-                          '${record.matchDistance} character '
-                          'difference'
+                          '${record.matchDistance} character difference'
                           '${record.matchDistance == 1 ? '' : 's'}.',
                           style: const TextStyle(
                             color: AppColors.slate,
@@ -187,12 +172,23 @@ class VerificationResultScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  detailsTitle,
+                  isUnknown
+                      ? 'Search Details'
+                      : isSafe
+                      ? 'Official Record Details'
+                      : 'Reported Entity Details',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 9),
 
-                KeyValueRow(label: entityLabel, value: record.businessName),
+                KeyValueRow(
+                  label: isUnknown
+                      ? 'Search Query'
+                      : isSafe
+                      ? 'Entity Name'
+                      : 'Reported Name',
+                  value: record.businessName,
+                ),
 
                 if ((record.phone ?? '').isNotEmpty)
                   KeyValueRow(label: 'Phone', value: record.phone!),
@@ -256,10 +252,9 @@ class VerificationResultScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 9),
                   Text(
-                    'This result is Unknown, not Safe. The absence '
-                    'of a database match does not guarantee that '
-                    'the business is legitimate. Check the spelling '
-                    'and continue carefully.',
+                    'This result is Unknown, not Safe. The absence of a '
+                    'database match does not guarantee that the business is '
+                    'legitimate. Check the spelling and continue carefully.',
                     style: TextStyle(
                       color: AppColors.slate,
                       fontSize: 11,
@@ -344,18 +339,20 @@ class VerificationResultScreen extends StatelessWidget {
               label: 'View Scam History',
               icon: Icons.history,
               color: riskColor,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) {
-                      return ScamHistoryScreen(
-                        repository: repository,
-                        record: record,
+              onPressed: record.id.isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) {
+                            return ScamHistoryScreen(
+                              repository: repository,
+                              record: record,
+                            );
+                          },
+                        ),
                       );
                     },
-                  ),
-                );
-              },
             ),
           ],
 

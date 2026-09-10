@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../core/app_error_message.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/qr_repository.dart';
+import '../../services/qr_analysis_service.dart';
 import 'qr_result_screen.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -24,6 +26,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   );
 
   bool isProcessing = false;
+  String? lastDetectedValue;
+  DateTime? lastDetectedAt;
 
   @override
   void dispose() {
@@ -38,6 +42,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       return;
     }
 
+    final now = DateTime.now();
+    final duplicateScan =
+        cleanedValue == lastDetectedValue &&
+        lastDetectedAt != null &&
+        now.difference(lastDetectedAt!) < const Duration(seconds: 2);
+
+    if (duplicateScan) {
+      return;
+    }
+
+    lastDetectedValue = cleanedValue;
+    lastDetectedAt = now;
+
     setState(() {
       isProcessing = true;
     });
@@ -51,64 +68,102 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         return;
       }
 
-      await Navigator.of(context).pushReplacement(
+      await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (context) {
             return QrResultScreen(result: result);
           },
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      logDebugError('Verify QR code', error, stackTrace);
+      lastDetectedAt = null;
+
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not verify the QR code: $error')),
+        SnackBar(
+          content: Text(
+            friendlyErrorMessage(
+              error,
+              fallback: 'The QR code could not be verified. Please retry.',
+            ),
+          ),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => verifyValue(cleanedValue),
+          ),
+        ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isProcessing = false;
+        });
 
-      setState(() {
-        isProcessing = false;
-      });
-
-      await scannerController.start();
+        try {
+          await scannerController.start();
+        } catch (error, stackTrace) {
+          logDebugError('Restart QR scanner', error, stackTrace);
+        }
+      }
     }
   }
 
   Future<void> enterManually() async {
     final inputController = TextEditingController();
+    String? validationMessage;
 
     final value = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Enter QR destination'),
-          content: TextField(
-            controller: inputController,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: 'URL or QR data',
-              hintText: 'https://merchant.example/pay',
-            ),
-            onSubmitted: (enteredValue) {
-              Navigator.of(dialogContext).pop(enteredValue);
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(inputController.text);
-              },
-              child: const Text('Verify'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void submit() {
+              final input = inputController.text.trim();
+              final analysis = QrAnalysisService.analyseDestination(input);
+
+              if (!analysis.isValid) {
+                setDialogState(() {
+                  validationMessage = analysis.invalidReason;
+                });
+                return;
+              }
+
+              Navigator.of(dialogContext).pop(input);
+            }
+
+            return AlertDialog(
+              title: const Text('Enter QR destination'),
+              content: TextField(
+                controller: inputController,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: 'Website URL',
+                  hintText: 'https://merchant.example/pay',
+                  errorText: validationMessage,
+                ),
+                onChanged: (_) {
+                  if (validationMessage != null) {
+                    setDialogState(() {
+                      validationMessage = null;
+                    });
+                  }
+                },
+                onSubmitted: (_) => submit(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(onPressed: submit, child: const Text('Verify')),
+              ],
+            );
+          },
         );
       },
     );
@@ -167,7 +222,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      error.errorDetails?.message ?? error.toString(),
+                      'Camera access is unavailable. Check the browser or '
+                      'device permission, then retry or enter the URL manually.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white70,
@@ -259,7 +315,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (context) {
-                            return const CameraHelpScreen();
+                            return CameraHelpScreen(
+                              onEnterManually: () {
+                                Navigator.of(context).pop();
+                                enterManually();
+                              },
+                            );
                           },
                         ),
                       );
@@ -280,7 +341,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 }
 
 class CameraHelpScreen extends StatelessWidget {
-  const CameraHelpScreen({super.key});
+  const CameraHelpScreen({required this.onEnterManually, super.key});
+
+  final VoidCallback onEnterManually;
 
   @override
   Widget build(BuildContext context) {
@@ -341,9 +404,7 @@ class CameraHelpScreen extends StatelessWidget {
               width: double.infinity,
               height: 46,
               child: OutlinedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: onEnterManually,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.navy,
                   side: const BorderSide(color: AppColors.line),
