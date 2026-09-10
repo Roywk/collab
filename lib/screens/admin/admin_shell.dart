@@ -10,9 +10,17 @@ class AdminShell extends StatelessWidget {
     this.searchController,
     this.onSearchChanged,
     this.selectedMenuItem = 'Threat Database',
+    this.onOpenDashboard,
+    this.onOpenReports,
     this.onOpenHeatmap,
-    this.onPublishScamCase,
+    this.onOpenPublishScamCase,
+    this.onOpenVerifiedMerchants,
+    this.onOpenHeatmap,
+    this.onOpenPublishScamCase,
+    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
     this.onOpenAwareness,
@@ -23,13 +31,19 @@ class AdminShell extends StatelessWidget {
 
   final Widget child;
   final VoidCallback? onBack;
-  final VoidCallback? onSignOut;
+  final Future<void> Function()? onSignOut;
   final TextEditingController? searchController;
   final ValueChanged<String>? onSearchChanged;
   final String selectedMenuItem;
+
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
-  final VoidCallback? onPublishScamCase;
+  final VoidCallback? onOpenPublishScamCase;
+  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
   final VoidCallback? onOpenAwareness;
@@ -62,14 +76,19 @@ class AdminShell extends StatelessWidget {
                       },
                     ),
               title: Text(
-                headerTitle,
+                headerTitle ?? selectedMenuItem,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              actions: const [
-                Padding(
+              actions: [
+                if (onOpenReports != null)
+                  IconButton(
+                    onPressed: onOpenReports,
+                    icon: const Icon(Icons.report_gmailerrorred_outlined, size: 20),
+                  ),
+                const Padding(
                   padding: EdgeInsets.only(right: 12),
                   child: AdminLiveBadge(),
                 ),
@@ -81,9 +100,14 @@ class AdminShell extends StatelessWidget {
                       child: AdminSidebar(
                         onSignOut: onSignOut,
                         selectedMenuItem: selectedMenuItem,
+                        onOpenDashboard: onOpenDashboard,
+                        onOpenReports: onOpenReports,
                         onOpenHeatmap: onOpenHeatmap,
-                        onPublishScamCase: onPublishScamCase,
+                        onOpenPublishScamCase: onOpenPublishScamCase,
+                        onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                         onOpenThreatDatabase: onOpenThreatDatabase,
+                        onOpenAwarenessCms: onOpenAwarenessCms,
+                        onOpenSettings: onOpenSettings,
                         onOpenBankHotlines: onOpenBankHotlines,
                         onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                         onOpenAwareness: onOpenAwareness,
@@ -104,9 +128,14 @@ class AdminShell extends StatelessWidget {
                 child: AdminSidebar(
                   onSignOut: onSignOut,
                   selectedMenuItem: selectedMenuItem,
+                  onOpenDashboard: onOpenDashboard,
+                  onOpenReports: onOpenReports,
                   onOpenHeatmap: onOpenHeatmap,
-                  onPublishScamCase: onPublishScamCase,
+                  onOpenPublishScamCase: onOpenPublishScamCase,
+                  onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                   onOpenThreatDatabase: onOpenThreatDatabase,
+                  onOpenAwarenessCms: onOpenAwarenessCms,
+                  onOpenSettings: onOpenSettings,
                   onOpenBankHotlines: onOpenBankHotlines,
                   onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                   onOpenAwareness: onOpenAwareness,
@@ -136,7 +165,7 @@ class AdminShell extends StatelessWidget {
                                 ],
                                 Expanded(
                                   child: Text(
-                                    headerTitle,
+                                    headerTitle ?? selectedMenuItem,
                                     style: const TextStyle(
                                       color: AppColors.navy,
                                       fontSize: 21,
@@ -144,7 +173,7 @@ class AdminShell extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                if (searchController != null)
+                                if (onSearchChanged != null)
                                   SizedBox(
                                     width: 300,
                                     height: 40,
@@ -152,8 +181,7 @@ class AdminShell extends StatelessWidget {
                                       controller: searchController,
                                       onChanged: onSearchChanged,
                                       decoration: const InputDecoration(
-                                        hintText:
-                                            'Search record, phone or URL...',
+                                        hintText: 'Search...',
                                         prefixIcon: Icon(
                                           Icons.search,
                                           size: 18,
@@ -165,6 +193,17 @@ class AdminShell extends StatelessWidget {
                                     ),
                                   ),
                                 const SizedBox(width: 16),
+                                if (onOpenReports != null)
+                                  IconButton(
+                                    tooltip: 'Reports Moderation',
+                                    onPressed: onOpenReports,
+                                    icon: const Icon(
+                                      Icons.report_gmailerrorred_outlined,
+                                      color: AppColors.blue,
+                                      size: 22,
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
                                 const AdminLiveBadge(),
                                 const SizedBox(width: 14),
                                 const Icon(
@@ -187,54 +226,34 @@ class AdminShell extends StatelessWidget {
   }
 }
 
-class AdminLiveBadge extends StatelessWidget {
-  const AdminLiveBadge({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.greenSoft,
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(radius: 3, backgroundColor: AppColors.green),
-          SizedBox(width: 6),
-          Text(
-            'Core Live',
-            style: TextStyle(
-              color: AppColors.green,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({
     this.onSignOut,
     this.selectedMenuItem = 'Scam Moderation',
+    this.onOpenDashboard,
+    this.onOpenReports,
     this.onOpenHeatmap,
-    this.onPublishScamCase,
+    this.onOpenPublishScamCase,
+    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
     this.onOpenAwareness,
     super.key,
   });
 
-  final VoidCallback? onSignOut;
+  final Future<void> Function()? onSignOut;
   final String selectedMenuItem;
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
-  final VoidCallback? onPublishScamCase;
+  final VoidCallback? onOpenPublishScamCase;
+  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
   final VoidCallback? onOpenAwareness;
@@ -244,7 +263,9 @@ class AdminSidebar extends StatelessWidget {
     const menuItems = [
       (Icons.dashboard_outlined, 'Dashboard Overview'),
       (Icons.fact_check_outlined, 'Scam Report Moderation'),
+      (Icons.report_gmailerrorred_outlined, 'Reports Moderation'),
       (Icons.shield_outlined, 'Threat Database'),
+      (Icons.flag_outlined, 'Scam Moderation'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
       (Icons.verified_outlined, 'Verified Merchants'),
       (Icons.phone_outlined, 'Bank Hotline Mgmt'),
@@ -296,7 +317,6 @@ class AdminSidebar extends StatelessWidget {
               ],
             ),
           ),
-
           for (final item in menuItems)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
@@ -308,11 +328,20 @@ class AdminSidebar extends StatelessWidget {
                 child: ListTile(
                   onTap: () {
                     switch (item.$2) {
-                      case 'Geospatial Heatmap':
-                        onOpenHeatmap?.call();
+                      case 'Dashboard Overview':
+                        onOpenDashboard?.call();
+                        break;
+                      case 'Reports Moderation':
+                        onOpenReports?.call();
                         break;
                       case 'Threat Database':
                         onOpenThreatDatabase?.call();
+                        break;
+                      case 'Geospatial Heatmap':
+                        onOpenHeatmap?.call();
+                        break;
+                      case 'Verified Merchants':
+                        onOpenVerifiedMerchants?.call();
                         break;
                       case 'Bank Hotline Mgmt':
                         onOpenBankHotlines?.call();
@@ -323,30 +352,41 @@ class AdminSidebar extends StatelessWidget {
                       case 'Awareness CMS':
                         if (onOpenAwareness != null) {
                           onOpenAwareness!.call();
+                        } else if (onOpenAwarenessCms != null) {
+                          onOpenAwarenessCms!.call();
                         } else {
                           Navigator.of(context).pushNamed('/admin/awareness');
                         }
+                        break;
+                      case 'System Logs & Settings':
+                        onOpenSettings?.call();
+                        break;
                         break;
                     }
                   },
                   dense: true,
                   visualDensity: const VisualDensity(vertical: -3),
-                  leading: Icon(item.$1, color: Colors.white70, size: 18),
+                  leading: Icon(
+                    item.$1,
+                    color: item.$2 == selectedMenuItem ? Colors.white : Colors.white70,
+                    size: 18,
+                  ),
                   title: Text(
                     item.$2,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(
+                      color: item.$2 == selectedMenuItem ? Colors.white : Colors.white70,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ),
             ),
-
           const Spacer(),
-
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -390,6 +430,39 @@ class AdminSidebar extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminLiveBadge extends StatelessWidget {
+  const AdminLiveBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.greenSoft,
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 3,
+            backgroundColor: AppColors.green,
+          ),
+          SizedBox(width: 5),
+          Text(
+            'LIVE',
+            style: TextStyle(
+              color: AppColors.green,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],

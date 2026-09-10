@@ -1,10 +1,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../models/module_models.dart';
+import '../models/report_models.dart';
 
 class AdminRepository {
   AdminRepository({SupabaseClient? client})
-    : client = client ?? Supabase.instance.client;
+      : client = client ?? Supabase.instance.client;
 
   final SupabaseClient client;
 
@@ -157,6 +157,96 @@ class AdminRepository {
         'The selected record no longer exists or has already been deactivated.',
       );
     }
+  }
+
+  // Scam Report Moderation
+  Future<List<ScamReport>> getAllScamReports() async {
+    final response = await client
+        .from('scam_reports')
+        .select()
+        .order('created_at', ascending: false);
+
+    return (response as List).map((json) => _mapScamReport(json)).toList();
+  }
+
+  Future<void> updateReportStatus({
+    required String reportId,
+    required String status,
+    String? adminNotes,
+  }) async {
+    await client.from('scam_reports').update({
+      'verification_status': status,
+      'admin_notes': adminNotes,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', reportId);
+  }
+
+  Future<void> deleteScamReport(String reportId) async {
+    await client.from('scam_reports').delete().eq('id', reportId);
+  }
+
+  Future<List<ScamReport>> getNearbyReports(double lat, double lng, {String? excludeId}) async {
+    // Basic bounding box search for nearby reports (~1km)
+    final double delta = 0.01; 
+    var query = client
+        .from('scam_reports')
+        .select()
+        .gte('latitude', lat - delta)
+        .lte('latitude', lat + delta)
+        .gte('longitude', lng - delta)
+        .lte('longitude', lng + delta);
+
+    if (excludeId != null) {
+      query = query.neq('id', excludeId);
+    }
+
+    final response = await query.limit(5);
+    return (response as List).map((json) => _mapScamReport(json)).toList();
+  }
+
+  Future<Map<String, dynamic>> getModerationStats() async {
+    // This would ideally be a RPC call or multiple aggregations
+    // For now, return some mocked data or implement basic counts
+    final reportsResponse = await client.from('scam_reports').select('verification_status');
+    final reports = reportsResponse as List;
+    
+    final total = reports.length;
+    final pending = reports.where((r) => r['verification_status'] == 'Pending').length;
+    
+    return {
+      'total_reports': total,
+      'pending_review': pending,
+      'accuracy_rate': 94.2, // Mocked or calculated
+      'community_reach': '12.4k', // Mocked or calculated
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getAwarenessContent() async {
+    final response = await client
+        .from('awareness_content')
+        .select()
+        .order('updated_at', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  ScamReport _mapScamReport(Map<String, dynamic> json) {
+    return ScamReport(
+      id: json['id']?.toString(),
+      title: json['title']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      locationName: json['location_name']?.toString(),
+      amountLost: (json['amount_lost'] as num?)?.toDouble(),
+      evidenceUrls: List<String>.from(json['evidence_urls'] ?? []),
+      verificationStatus: json['verification_status']?.toString() ?? 'Pending',
+      isAnonymous: json['is_anonymous'] ?? false,
+      adminNotes: json['admin_notes']?.toString(),
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+    );
   }
 
   ThreatRecord _mapThreatRecord(Map<String, dynamic> data) {

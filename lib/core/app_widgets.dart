@@ -244,7 +244,10 @@ class VisitBottomNavigation extends StatelessWidget {
           () {
             if (currentIndex != 2) Navigator.of(context).pushNamed('/verify');
           },
-      onReport,
+      onReport ??
+          () {
+            if (currentIndex != 3) Navigator.of(context).pushNamed('/report');
+          },
       onEmergency ??
           () {
             if (currentIndex != 4) {

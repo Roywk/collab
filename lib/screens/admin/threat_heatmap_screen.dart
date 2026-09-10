@@ -11,9 +11,30 @@ import '../../services/threat_export_service.dart';
 import 'admin_shell.dart';
 
 class ThreatHeatmapScreen extends StatefulWidget {
-  const ThreatHeatmapScreen({required this.repository, super.key});
+  const ThreatHeatmapScreen({
+    required this.repository,
+    required this.onSignOut,
+    this.onOpenReports,
+    this.onOpenThreatDatabase,
+    this.onOpenDashboard,
+    this.onOpenVerifiedMerchants,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
+    this.onOpenPublishScamCase,
+    this.onOpenHeatmap,
+    super.key,
+  });
 
   final ScamMapRepository repository;
+  final Future<void> Function() onSignOut;
+  final VoidCallback? onOpenReports;
+  final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenVerifiedMerchants;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenPublishScamCase;
+  final VoidCallback? onOpenHeatmap;
 
   @override
   State<ThreatHeatmapScreen> createState() => _ThreatHeatmapScreenState();
@@ -66,7 +87,15 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
     return AdminShell(
       selectedMenuItem: 'Geospatial Heatmap',
       onBack: () => Navigator.of(context).pop(),
-      onOpenThreatDatabase: () => Navigator.of(context).pop(),
+      onSignOut: widget.onSignOut,
+      onOpenReports: widget.onOpenReports,
+      onOpenThreatDatabase: widget.onOpenThreatDatabase,
+      onOpenDashboard: widget.onOpenDashboard,
+      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
+      onOpenAwarenessCms: widget.onOpenAwarenessCms,
+      onOpenSettings: widget.onOpenSettings,
+      onOpenPublishScamCase: widget.onOpenPublishScamCase,
+      onOpenHeatmap: widget.onOpenHeatmap,
       child: FutureBuilder<ScamMapLoadResult>(
         future: _reportsFuture,
         builder: (context, snapshot) {
@@ -128,17 +157,6 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                 'Nationwide scam density visualization from active incident data.',
                 style: TextStyle(color: AppColors.slate, fontSize: 12),
               ),
-              if (snapshot.data?.loadedFromCache == true) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  color: AppColors.blueSoft,
-                  child: const Text(
-                    'Network offline. Analytics are using cached SQLite data.',
-                    style: TextStyle(color: AppColors.blue, fontSize: 11),
-                  ),
-                ),
-              ],
               const SizedBox(height: 18),
               Wrap(
                 spacing: 12,
@@ -231,9 +249,9 @@ class _AnalyticsCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: AppColors.slate, fontSize: 9),
+            style: const TextStyle(color: AppColors.slate, fontSize: 10, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
@@ -281,24 +299,24 @@ class _HeatmapPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Malaysia Threat Density Map',
+                    'Geospatial Density Map',
                     style: TextStyle(
                       color: AppColors.navy,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   Text(
-                    'Dark red indicates higher verified-report density.',
-                    style: TextStyle(color: AppColors.slate, fontSize: 10),
+                    'Visualization of reported scam clusters across Malaysia.',
+                    style: TextStyle(color: AppColors.slate, fontSize: 11),
                   ),
                 ],
               ),
               SegmentedButton<int>(
                 segments: const [
-                  ButtonSegment(value: 7, label: Text('7 Days')),
-                  ButtonSegment(value: 30, label: Text('30 Days')),
-                  ButtonSegment(value: 90, label: Text('90 Days')),
+                  ButtonSegment(value: 7, label: Text('7d')),
+                  ButtonSegment(value: 30, label: Text('30d')),
+                  ButtonSegment(value: 90, label: Text('90d')),
                 ],
                 selected: {days},
                 onSelectionChanged: (selection) =>
@@ -306,7 +324,7 @@ class _HeatmapPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             height: 470,
             child: ClipRRect(
@@ -329,13 +347,13 @@ class _HeatmapPanel extends StatelessWidget {
                       for (final report in reports)
                         CircleMarker(
                           point: LatLng(report.latitude, report.longitude),
-                          radius: report.isVerified ? 34 : 22,
+                          radius: report.isVerified ? 30 : 18,
                           color: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.30)
-                              : AppColors.amber.withValues(alpha: 0.25),
+                              ? AppColors.red.withOpacity(0.3)
+                              : AppColors.amber.withOpacity(0.25),
                           borderColor: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.55)
-                              : AppColors.amber.withValues(alpha: 0.55),
+                              ? AppColors.red.withOpacity(0.6)
+                              : AppColors.amber.withOpacity(0.55),
                           borderStrokeWidth: 1,
                         ),
                     ],
@@ -344,22 +362,23 @@ class _HeatmapPanel extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
               Text(
-                'Updated ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                style: const TextStyle(color: AppColors.muted, fontSize: 9),
+                'Last synced: ${DateFormat('HH:mm').format(DateTime.now())}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 10),
               ),
               const Spacer(),
               OutlinedButton.icon(
                 onPressed: exporting ? null : onExportCsv,
                 icon: const Icon(Icons.download_outlined, size: 16),
-                label: const Text('Export CSV'),
+                label: const Text('CSV'),
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: exporting ? null : onExportPdf,
+                style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
                 icon: exporting
                     ? const SizedBox(
                         width: 14,
@@ -370,7 +389,7 @@ class _HeatmapPanel extends StatelessWidget {
                         ),
                       )
                     : const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                label: const Text('Export PDF'),
+                label: const Text('PDF Report'),
               ),
             ],
           ),
@@ -392,51 +411,57 @@ class _HotspotLeaderboard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Top Hotspot Leaderboard',
+            'High-Risk Hotspots',
             style: TextStyle(
               color: AppColors.navy,
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 3),
-          const Text(
-            'Ranked by report volume',
-            style: TextStyle(color: AppColors.slate, fontSize: 10),
-          ),
           const SizedBox(height: 12),
           if (entries.isEmpty)
-            const Text('No location analytics are available.')
+            const Text('No hotspot data available.')
           else
             for (int index = 0; index < entries.length; index++) ...[
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: index < 3
-                      ? AppColors.redSoft
-                      : AppColors.canvas,
-                  child: Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      color: index < 3 ? AppColors.red : AppColors.slate,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: index < 3 ? AppColors.redSoft : AppColors.canvas,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: index < 3 ? AppColors.red : AppColors.slate,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                title: Text(
-                  entries[index].key,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Text(
-                  '${entries[index].value}',
-                  style: const TextStyle(
-                    color: AppColors.red,
-                    fontWeight: FontWeight.w800,
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        entries[index].key,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${entries[index].value} alerts',
+                      style: const TextStyle(
+                        color: AppColors.red,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (index < entries.length - 1) const Divider(height: 1),

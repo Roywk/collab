@@ -7,6 +7,7 @@ import '../../data/incident_report_repository.dart';
 import '../../data/user_account_repository.dart';
 import '../../models/user_profile.dart';
 import 'translated_report_history_screen.dart';
+import 'scam_report_history_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
@@ -25,12 +26,11 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _nationalityController = TextEditingController();
-  final TextEditingController _contactNameController = TextEditingController();
-  final TextEditingController _contactPhoneController = TextEditingController();
-  final TextEditingController _contactRelationshipController =
-      TextEditingController();
+  final _phoneController = TextEditingController();
+  final _nationalityController = TextEditingController();
+  final _contactNameController = TextEditingController();
+  final _contactPhoneController = TextEditingController();
+  final _contactRelationshipController = TextEditingController();
 
   late Future<UserProfile> _profileFuture;
   late Future<List<BankChoice>> _banksFuture;
@@ -153,6 +153,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         builder: (_) => TranslatedReportHistoryScreen(
           repository: widget.incidentReportRepository,
         ),
+      ),
+    );
+  }
+
+  void _openScamReportHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const ScamReportHistoryScreen(),
       ),
     );
   }
@@ -419,6 +427,54 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ],
                     ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SurfaceCard(
+                  padding: EdgeInsets.zero,
+                  child: InkWell(
+                    onTap: _openScamReportHistory,
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          _ProfileActionIcon(
+                            icon: Icons.history_rounded,
+                            color: AppColors.red,
+                            backgroundColor: AppColors.redSoft,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Scam Report History',
+                                  style: TextStyle(
+                                    color: AppColors.navy,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'View your submitted scam reports',
+                                  style: TextStyle(
+                                    color: AppColors.slate,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.muted,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
