@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/app_error_message.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/verification_repository.dart';
@@ -14,6 +15,7 @@ import '../../data/incident_report_repository.dart';
 import '../../data/sos_repository.dart';
 import '../admin/admin_gate.dart';
 import '../../models/module_models.dart';
+import '../../services/input_validation_service.dart';
 import 'verification_result_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'scam_map_screen.dart';
@@ -41,6 +43,7 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
   late Future<List<RecentSearch>> recentSearches;
   bool isSearching = false;
+  String? searchError;
 
   @override
   void initState() {
@@ -56,18 +59,18 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
   Future<void> searchBusiness([String? suppliedQuery]) async {
     final query = (suppliedQuery ?? queryController.text).trim();
+    final validationError = InputValidationService.validateSearch(query);
 
-    if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a business name, phone, email or URL.'),
-        ),
-      );
+    if (validationError != null) {
+      setState(() {
+        searchError = validationError;
+      });
       return;
     }
 
     setState(() {
       isSearching = true;
+      searchError = null;
     });
 
     try {
@@ -93,14 +96,19 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
           recentSearches = widget.repository.getRecentSearches();
         });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      logDebugError('Search business', error, stackTrace);
+
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Search failed: $error')));
+      setState(() {
+        searchError = friendlyErrorMessage(
+          error,
+          fallback: 'Verification is temporarily unavailable. Please retry.',
+        );
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -253,12 +261,18 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 16),
 
           TextField(
             controller: queryController,
             textInputAction: TextInputAction.search,
+            onChanged: (_) {
+              if (searchError != null) {
+                setState(() {
+                  searchError = null;
+                });
+              }
+            },
             onSubmitted: (value) {
               searchBusiness(value);
             },
@@ -281,6 +295,18 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
                     ),
             ),
           ),
+
+          if (searchError != null) ...[
+            const SizedBox(height: 7),
+            Text(
+              searchError!,
+              style: const TextStyle(
+                color: AppColors.red,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
 
           const SizedBox(height: 12),
 
@@ -333,10 +359,28 @@ class _VerificationHomeScreenState extends State<VerificationHomeScreen> {
 
               if (snapshot.hasError) {
                 return SurfaceCard(
-                  child: Text(
-                    'Could not load recent searches.\n'
-                    '${snapshot.error}',
-                    style: const TextStyle(color: AppColors.red),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recent searches are temporarily unavailable.',
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            recentSearches = widget.repository
+                                .getRecentSearches();
+                          });
+                        },
+                        icon: const Icon(Icons.refresh, size: 17),
+                        label: const Text('Try Again'),
+                      ),
+                    ],
                   ),
                 );
               }
