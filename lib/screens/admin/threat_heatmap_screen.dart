@@ -10,6 +10,8 @@ import '../../models/scam_map_models.dart';
 import '../../services/threat_export_service.dart';
 import 'admin_shell.dart';
 
+enum _HeatmapPeriod { lastSevenDays, monthly, yearly }
+
 class ThreatHeatmapScreen extends StatefulWidget {
   const ThreatHeatmapScreen({
     required this.repository,
@@ -44,7 +46,9 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   final ThreatExportService _exportService = ThreatExportService();
   final MapController _mapController = MapController();
   late Future<ScamMapLoadResult> _reportsFuture;
-  int _days = 30;
+  _HeatmapPeriod _period = _HeatmapPeriod.lastSevenDays;
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
   bool _exporting = false;
 
   @override
@@ -60,10 +64,23 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   }
 
   List<ScamMapReport> _filterByDate(List<ScamMapReport> reports) {
-    final cutoff = DateTime.now().subtract(Duration(days: _days));
-    return reports
-        .where((report) => report.reportedAt.isAfter(cutoff))
-        .toList();
+    final now = DateTime.now();
+    return reports.where((report) {
+      final date = report.reportedAt.toLocal();
+      switch (_period) {
+        case _HeatmapPeriod.lastSevenDays:
+          final start = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6));
+          return !date.isBefore(start);
+        case _HeatmapPeriod.monthly:
+          return date.year == _selectedYear && date.month == _selectedMonth;
+        case _HeatmapPeriod.yearly:
+          return date.year == _selectedYear;
+      }
+    }).toList();
   }
 
   Future<void> _export(
@@ -145,6 +162,10 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
 
           final allReports = snapshot.data?.reports ?? const <ScamMapReport>[];
           final reports = _filterByDate(allReports);
+          final availableYears = <int>{
+            DateTime.now().year,
+            ...allReports.map((report) => report.reportedAt.toLocal().year),
+          }.toList()..sort((first, second) => second.compareTo(first));
           final analytics = ScamThreatAnalytics.fromReports(reports);
           final hotspots = analytics.locationCounts.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value));
@@ -218,9 +239,17 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                   final map = _HeatmapPanel(
                     mapController: _mapController,
                     reports: reports,
-                    days: _days,
+                    period: _period,
+                    selectedMonth: _selectedMonth,
+                    selectedYear: _selectedYear,
+                    availableYears: availableYears,
                     exporting: _exporting,
-                    onDaysChanged: (days) => setState(() => _days = days),
+                    onPeriodChanged: (period) =>
+                        setState(() => _period = period),
+                    onMonthChanged: (month) =>
+                        setState(() => _selectedMonth = month),
+                    onYearChanged: (year) =>
+                        setState(() => _selectedYear = year),
                     onExportCsv: () => _export(reports, asPdf: false),
                     onExportPdf: () => _export(reports, asPdf: true),
                   );
@@ -478,18 +507,28 @@ class _HeatmapPanel extends StatelessWidget {
   const _HeatmapPanel({
     required this.mapController,
     required this.reports,
-    required this.days,
+    required this.period,
+    required this.selectedMonth,
+    required this.selectedYear,
+    required this.availableYears,
     required this.exporting,
-    required this.onDaysChanged,
+    required this.onPeriodChanged,
+    required this.onMonthChanged,
+    required this.onYearChanged,
     required this.onExportCsv,
     required this.onExportPdf,
   });
 
   final MapController mapController;
   final List<ScamMapReport> reports;
-  final int days;
+  final _HeatmapPeriod period;
+  final int selectedMonth;
+  final int selectedYear;
+  final List<int> availableYears;
   final bool exporting;
-  final ValueChanged<int> onDaysChanged;
+  final ValueChanged<_HeatmapPeriod> onPeriodChanged;
+  final ValueChanged<int> onMonthChanged;
+  final ValueChanged<int> onYearChanged;
   final VoidCallback onExportCsv;
   final VoidCallback onExportPdf;
 
@@ -522,16 +561,53 @@ class _HeatmapPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              SegmentedButton<int>(
+              SegmentedButton<_HeatmapPeriod>(
+                showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: 7, label: Text('7d')),
-                  ButtonSegment(value: 30, label: Text('30d')),
-                  ButtonSegment(value: 90, label: Text('90d')),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.lastSevenDays,
+                    label: Text('7 Days'),
+                  ),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.monthly,
+                    label: Text('Monthly'),
+                  ),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.yearly,
+                    label: Text('Yearly'),
+                  ),
                 ],
-                selected: {days},
+                selected: {period},
                 onSelectionChanged: (selection) =>
-                    onDaysChanged(selection.first),
+                    onPeriodChanged(selection.first),
               ),
+              if (period == _HeatmapPeriod.monthly)
+                DropdownButton<int>(
+                  value: selectedMonth,
+                  items: [
+                    for (var month = 1; month <= 12; month++)
+                      DropdownMenuItem(
+                        value: month,
+                        child: Text(
+                          DateFormat('MMM').format(DateTime(2024, month)),
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onMonthChanged(value);
+                  },
+                ),
+              if (period != _HeatmapPeriod.lastSevenDays)
+                DropdownButton<int>(
+                  value: selectedYear,
+                  items: [
+                    for (final year in availableYears)
+                      DropdownMenuItem(value: year, child: Text('$year')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onYearChanged(value);
+                  },
+                ),
             ],
           ),
           const SizedBox(height: 16),
