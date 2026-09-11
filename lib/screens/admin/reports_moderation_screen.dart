@@ -63,6 +63,9 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Reports Moderation',
+    return AdminShell(
+      selectedMenuItem: 'Reports Moderation',
+      headerTitle: 'Reports Moderation',
       onSignOut: widget.onSignOut,
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,

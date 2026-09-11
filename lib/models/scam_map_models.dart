@@ -86,7 +86,26 @@ class ScamMapReport {
 
   String get analyticsLocation {
     final namedLocation = (locationName ?? '').trim();
-    if (namedLocation.isNotEmpty) return namedLocation;
+    if (namedLocation.isNotEmpty) {
+      final normalized = namedLocation.toLowerCase();
+      const aliases = <(String, List<String>)>[
+        ('TAR UMT / Setapak', ['tar umt', 'tarumt', 'setapak']),
+        ('Sentul', ['sentul']),
+        ('Taman Shamelin', ['taman shamelin', 'shamelin']),
+        ('Chow Kit', ['chow kit']),
+        ('KLCC', ['klcc', 'kuala lumpur city centre']),
+        ('Bukit Bintang', ['bukit bintang']),
+        ('Central Market', ['central market', 'pasar seni']),
+        ('Brickfields / KL Sentral', ['brickfields', 'kl sentral']),
+        ('Bangsar', ['bangsar']),
+        ('Cheras', ['cheras']),
+        ('Bukit Jalil', ['bukit jalil']),
+      ];
+      for (final area in aliases) {
+        if (area.$2.any(normalized.contains)) return area.$1;
+      }
+      return namedLocation;
+    }
 
     const areas = <(String, double, double)>[
       ('TAR UMT / Setapak', 3.2159, 101.7304),

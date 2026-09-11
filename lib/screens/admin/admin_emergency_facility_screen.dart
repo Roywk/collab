@@ -53,7 +53,6 @@ class _AdminEmergencyFacilityScreenState
 
   void _openBankHotlines() {
     if (widget.onOpenBankHotlines == null) return;
-    Navigator.of(context).pop();
     widget.onOpenBankHotlines!();
   }
 
@@ -143,7 +142,6 @@ class _AdminEmergencyFacilityScreenState
       selectedMenuItem: 'Emergency Facilities',
       headerTitle: 'Emergency Facility Management',
       showTopBar: false,
-      onOpenThreatDatabase: () => Navigator.of(context).pop(),
       onOpenBankHotlines: _openBankHotlines,
       onOpenEmergencyFacilities: () {},
       onSignOut: widget.onSignOut,

@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
-import '../../core/haversine.dart';
 import '../../data/scam_map_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/threat_export_service.dart';
@@ -43,6 +42,7 @@ class ThreatHeatmapScreen extends StatefulWidget {
 
 class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   final ThreatExportService _exportService = ThreatExportService();
+  final MapController _mapController = MapController();
   late Future<ScamMapLoadResult> _reportsFuture;
   int _days = 30;
   bool _exporting = false;
@@ -51,6 +51,12 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   void initState() {
     super.initState();
     _reportsFuture = widget.repository.getThreatAnalyticsReports();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   List<ScamMapReport> _filterByDate(List<ScamMapReport> reports) {
@@ -87,7 +93,8 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Geospatial Heatmap',
-      onBack: () => Navigator.of(context).pop(),
+      headerTitle: 'Geospatial Heatmap Analytics',
+      onBack: widget.onOpenDashboard ?? () => Navigator.of(context).maybePop(),
       onSignOut: widget.onSignOut,
       onOpenReports: widget.onOpenReports,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
@@ -209,6 +216,7 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final map = _HeatmapPanel(
+                    mapController: _mapController,
                     reports: reports,
                     days: _days,
                     exporting: _exporting,
@@ -240,9 +248,12 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(flex: 3, child: map),
+                      Expanded(flex: 4, child: map),
                       const SizedBox(width: 16),
-                      SizedBox(width: 330, child: analyticsPanels),
+                      SizedBox(
+                        width: (constraints.maxWidth * 0.23).clamp(300, 360),
+                        child: analyticsPanels,
+                      ),
                     ],
                   );
                 },
@@ -465,6 +476,7 @@ class _BreakdownChart extends StatelessWidget {
 
 class _HeatmapPanel extends StatelessWidget {
   const _HeatmapPanel({
+    required this.mapController,
     required this.reports,
     required this.days,
     required this.exporting,
@@ -473,6 +485,7 @@ class _HeatmapPanel extends StatelessWidget {
     required this.onExportPdf,
   });
 
+  final MapController mapController;
   final List<ScamMapReport> reports;
   final int days;
   final bool exporting;
@@ -504,7 +517,7 @@ class _HeatmapPanel extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Visualization of reported scam clusters across Malaysia.',
+                    'Visualization of reported scam clusters across Kuala Lumpur.',
                     style: TextStyle(color: AppColors.slate, fontSize: 11),
                   ),
                 ],
@@ -523,49 +536,50 @@ class _HeatmapPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 360,
+            height: 520,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: const LatLng(3.1390, 101.6869),
-                  initialZoom: 12,
-                  minZoom: 11,
-                  maxZoom: 15,
-                  cameraConstraint: CameraConstraint.contain(
-                    bounds: LatLngBounds(
-                      const LatLng(
-                        kualaLumpurMinimumLatitude,
-                        kualaLumpurMinimumLongitude,
-                      ),
-                      const LatLng(
-                        kualaLumpurMaximumLatitude,
-                        kualaLumpurMaximumLongitude,
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: mapController,
+                    options: MapOptions(
+                      initialCenter: const LatLng(3.1390, 101.6869),
+                      initialZoom: 11.3,
+                      minZoom: 9,
+                      maxZoom: 18,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                       ),
                     ),
-                  ),
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.collab',
-                  ),
-                  CircleLayer(
-                    circles: [
-                      for (final report in reports)
-                        CircleMarker(
-                          point: LatLng(report.latitude, report.longitude),
-                          radius: report.isVerified ? 30 : 18,
-                          color: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.3)
-                              : AppColors.amber.withValues(alpha: 0.25),
-                          borderColor: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.6)
-                              : AppColors.amber.withValues(alpha: 0.55),
-                          borderStrokeWidth: 1,
-                        ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.collab',
+                      ),
+                      CircleLayer(
+                        circles: [
+                          for (final report in reports)
+                            CircleMarker(
+                              point: LatLng(report.latitude, report.longitude),
+                              radius: report.isVerified ? 30 : 18,
+                              color: report.isVerified
+                                  ? AppColors.red.withValues(alpha: 0.3)
+                                  : AppColors.amber.withValues(alpha: 0.25),
+                              borderColor: report.isVerified
+                                  ? AppColors.red.withValues(alpha: 0.6)
+                                  : AppColors.amber.withValues(alpha: 0.55),
+                              borderStrokeWidth: 1,
+                            ),
+                        ],
+                      ),
                     ],
+                  ),
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: _MapZoomControls(controller: mapController),
                   ),
                 ],
               ),
@@ -601,6 +615,53 @@ class _HeatmapPanel extends StatelessWidget {
                 label: const Text('PDF Report'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapZoomControls extends StatelessWidget {
+  const _MapZoomControls({required this.controller});
+
+  final MapController controller;
+
+  void _changeZoom(double amount) {
+    final camera = controller.camera;
+    controller.move(camera.center, (camera.zoom + amount).clamp(9.0, 18.0));
+  }
+
+  void _showAllKualaLumpur() {
+    controller.move(const LatLng(3.1390, 101.6869), 11.3);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Zoom in',
+            onPressed: () => _changeZoom(1),
+            icon: const Icon(Icons.add),
+          ),
+          const SizedBox(width: 38, child: Divider(height: 1)),
+          IconButton(
+            tooltip: 'Zoom out',
+            onPressed: () => _changeZoom(-1),
+            icon: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 38, child: Divider(height: 1)),
+          IconButton(
+            tooltip: 'Show all Kuala Lumpur',
+            onPressed: _showAllKualaLumpur,
+            icon: const Icon(Icons.center_focus_strong_outlined, size: 20),
           ),
         ],
       ),
@@ -661,10 +722,11 @@ class _HotspotLeaderboard extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${entries[index].value} alerts',
                       style: const TextStyle(
