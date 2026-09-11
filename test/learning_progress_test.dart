@@ -42,6 +42,33 @@ void main() {
 
       expect(profile.progressToNextLevel, 1);
     });
+
+    test('keeps lifetime rank XP separate from the redeemable balance', () {
+      final profile = UserLearningProfile(
+        userId: 'traveller-4',
+        totalXp: 650,
+        availableXp: 250,
+        currentLevel: 4,
+        vouchersCount: 1,
+        rankTitle: 'Safety Sentinel',
+      );
+
+      expect(profile.totalXp, 650);
+      expect(profile.spendableXp, 250);
+      expect(profile.currentLevel, 4);
+    });
+
+    test('uses lifetime XP as a safe fallback before migration', () {
+      final profile = UserLearningProfile(
+        userId: 'traveller-5',
+        totalXp: 180,
+        currentLevel: 1,
+        vouchersCount: 0,
+        rankTitle: 'Vigilant Voyager',
+      );
+
+      expect(profile.spendableXp, 180);
+    });
   });
 
   group('RewardVoucher inventory', () {

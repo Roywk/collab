@@ -414,12 +414,16 @@ class _RewardCard extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: Colors.white,
                   child: Icon(
-                    !voucher.isUnlocked
+                    voucher.isClaimed
+                        ? Icons.local_activity_outlined
+                        : !voucher.isUnlocked
                         ? Icons.lock_outline
                         : voucher.isAvailable
                         ? Icons.local_activity_outlined
                         : Icons.event_busy_outlined,
-                    color: voucher.isUnlocked && voucher.isAvailable
+                    color:
+                        voucher.isClaimed ||
+                            (voucher.isUnlocked && voucher.isAvailable)
                         ? AppColors.blue
                         : AppColors.slate,
                   ),
@@ -505,7 +509,9 @@ class _RewardCard extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed:
-                        !voucher.isUnlocked || !voucher.isAvailable || busy
+                        busy ||
+                            (!voucher.isClaimed &&
+                                (!voucher.isUnlocked || !voucher.isAvailable))
                         ? null
                         : onClaim,
                     icon: busy

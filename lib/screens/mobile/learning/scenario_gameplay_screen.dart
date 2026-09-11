@@ -37,6 +37,13 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   }
 
   void _nextStep() {
+    if (selectedOption?.isCorrect != true) {
+      setState(() {
+        selectedOption = null;
+        showFeedback = false;
+      });
+      return;
+    }
     if (currentStepIndex < widget.scenario.steps.length - 1) {
       setState(() {
         currentStepIndex++;
@@ -51,6 +58,7 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   Future<void> _showCompletion() async {
     final earnedXp = await widget.repository.completeScenario(
       widget.scenario.id,
+      fallbackXp: widget.scenario.xpReward,
     );
     if (!mounted) return;
     showModalBottomSheet(
@@ -84,9 +92,9 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                earnedXp
-                    ? '+${widget.scenario.xpReward} XP EARNED!'
-                    : 'SCENARIO ALREADY COMPLETED',
+                earnedXp > 0
+                    ? '+$earnedXp XP EARNED!'
+                    : 'PRACTICE COMPLETE · DAILY BONUS ALREADY EARNED',
                 style: const TextStyle(
                   color: AppColors.green,
                   fontWeight: FontWeight.w800,
@@ -110,7 +118,7 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    selectedOption?.feedback ?? widget.scenario.description,
+                    'Correct answer: ${selectedOption?.text}\n\n${selectedOption?.feedback ?? widget.scenario.description}',
                     style: const TextStyle(fontSize: 13, color: AppColors.navy),
                   ),
                 ],
@@ -262,42 +270,85 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
           }),
           const SizedBox(height: 12),
           if (showFeedback)
-            SurfaceCard(
-              color: selectedOption!.isCorrect
-                  ? AppColors.greenSoft
-                  : AppColors.redSoft,
-              borderColor: selectedOption!.isCorrect
-                  ? AppColors.green
-                  : AppColors.red,
-              child: Row(
-                children: [
-                  Icon(
-                    selectedOption!.isCorrect
-                        ? Icons.check_circle
-                        : Icons.error,
-                    color: selectedOption!.isCorrect
-                        ? AppColors.green
-                        : AppColors.red,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      selectedOption!.feedback,
-                      style: TextStyle(
+            Builder(
+              builder: (context) {
+                final correctOption = step.options.firstWhere(
+                  (option) => option.isCorrect,
+                );
+                return SurfaceCard(
+                  color: selectedOption!.isCorrect
+                      ? AppColors.greenSoft
+                      : AppColors.redSoft,
+                  borderColor: selectedOption!.isCorrect
+                      ? AppColors.green
+                      : AppColors.red,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        selectedOption!.isCorrect
+                            ? Icons.check_circle
+                            : Icons.school_outlined,
                         color: selectedOption!.isCorrect
                             ? AppColors.green
                             : AppColors.red,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selectedOption!.isCorrect
+                                  ? 'Correct — that is the safest response.'
+                                  : 'No harm done — this is a safe place to practise.',
+                              style: TextStyle(
+                                color: selectedOption!.isCorrect
+                                    ? AppColors.green
+                                    : AppColors.red,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            if (!selectedOption!.isCorrect) ...[
+                              Text(
+                                'Correct answer: ${correctOption.text}',
+                                style: const TextStyle(
+                                  color: AppColors.green,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                            ],
+                            Text(
+                              selectedOption!.isCorrect
+                                  ? selectedOption!.feedback
+                                  : '${selectedOption!.feedback}\n\nWhy the safer answer works: ${correctOption.feedback}',
+                              style: const TextStyle(
+                                color: AppColors.navy,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           const SizedBox(height: 16),
           PrimaryActionButton(
-            label: showFeedback ? 'Continue' : 'Submit Answer',
+            label: showFeedback
+                ? selectedOption!.isCorrect
+                      ? 'Continue'
+                      : 'Try the safest response'
+                : 'Submit Answer',
             onPressed: showFeedback ? _nextStep : _submitAnswer,
           ),
         ],

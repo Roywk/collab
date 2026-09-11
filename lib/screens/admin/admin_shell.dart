@@ -352,8 +352,6 @@ class AdminSidebar extends StatelessWidget {
                             case 'Threat Database':
                               onOpenThreatDatabase?.call();
                               break;
-                              onOpenThreatDatabase?.call();
-                              break;
                             case 'Geospatial Heatmap':
                               onOpenHeatmap?.call();
                               break;
@@ -402,7 +400,7 @@ class AdminSidebar extends StatelessWidget {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(

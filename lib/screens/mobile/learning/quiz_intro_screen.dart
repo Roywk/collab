@@ -137,12 +137,14 @@ class _QuizIntroScreenState extends State<QuizIntroScreen> {
                   const _BriefRow(
                     icon: Icons.verified_outlined,
                     title: '70% passing score',
-                    subtitle: 'Review every answer after finishing',
+                    subtitle:
+                        'XP is awarded only after reaching this graduation line',
                   ),
                   const _BriefRow(
                     icon: Icons.stars_outlined,
                     title: 'Up to 80 XP',
-                    subtitle: 'Only score improvements earn additional XP',
+                    subtitle:
+                        'Perfect repeat practice can earn a capped mastery bonus',
                   ),
                 ],
               ),

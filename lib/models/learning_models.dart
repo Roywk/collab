@@ -159,6 +159,8 @@ class UserLearningProfile {
   });
 
   int get spendableXp => availableXp ?? totalXp;
+  int get xpLevelFloor => (currentLevel - 1) * 200;
+  int get xpLevelCeiling => currentLevel * 200;
 
   int get xpForNextLevel => currentLevel * 200;
   int get xpIntoCurrentLevel => totalXp - ((currentLevel - 1) * 200);

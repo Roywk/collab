@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import 'awareness_cms_screen.dart';
-import 'admin_scam_overview_screen.dart';
 import 'admin_dashboard_screen.dart';
 
 class AdminGate extends StatefulWidget {
@@ -69,11 +68,9 @@ class _AdminGateState extends State<AdminGate> {
           return AdminDashboardScreen(
             repository: widget.repository,
             onSignOut: adminSignedOut,
-            initialSection: widget.initialAwareness ? 'Awareness CMS' : 'Dashboard Overview',
-          );
-            repository: widget.repository,
-            onSignOut: adminSignedOut,
-            initialSection: widget.initialAwareness ? 'Awareness CMS' : 'Dashboard Overview',
+            initialSection: widget.initialAwareness
+                ? 'Awareness CMS'
+                : 'Dashboard Overview',
           );
         }
 

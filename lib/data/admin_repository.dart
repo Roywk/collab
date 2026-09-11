@@ -167,7 +167,9 @@ class AdminRepository {
         .order('created_at', ascending: false);
 
     final rows = (response as List?) ?? [];
-    return rows.map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map))).toList();
+    return rows
+        .map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<void> updateReportStatus({
@@ -210,12 +212,16 @@ class AdminRepository {
 
     final response = await query.limit(5);
     final rows = (response as List?) ?? [];
-    return rows.map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map))).toList();
+    return rows
+        .map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<Map<String, dynamic>> getModerationStats() async {
     try {
-      final reportsResponse = await client.from('scam_reports').select('verification_status');
+      final reportsResponse = await client
+          .from('scam_reports')
+          .select('verification_status');
       final reports = (reportsResponse as List?) ?? [];
 
       final total = reports.length;
@@ -237,6 +243,8 @@ class AdminRepository {
         'community_reach': '0',
       };
     }
+  }
+
   ScamReport _mapScamReport(Map<String, dynamic> json) {
     // Helper to safely parse numbers and avoid "null is not a subtype of num"
     double toDouble(dynamic value, {double defaultValue = 0.0}) {
@@ -262,12 +270,18 @@ class AdminRepository {
       longitude: toDouble(json['longitude']),
       locationName: json['location_name']?.toString(),
       amountLost: toNullableDouble(json['amount_lost']),
-      evidenceUrls: json['evidence_urls'] != null ? List<String>.from(json['evidence_urls']) : [],
+      evidenceUrls: json['evidence_urls'] != null
+          ? List<String>.from(json['evidence_urls'])
+          : [],
       verificationStatus: json['verification_status']?.toString() ?? 'Pending',
       isAnonymous: json['is_anonymous'] ?? false,
       adminNotes: json['admin_notes']?.toString(),
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 

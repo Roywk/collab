@@ -52,10 +52,104 @@ class AwarenessAdminRepository {
         totalCodes: codes.length,
         availableCodes: available,
         claimedCodes: claimed,
+        partnerId: row['partner_id']?.toString(),
       );
     }).toList();
 
-    return AwarenessCmsSnapshot(contents: contents, vouchers: vouchers);
+    final partners = await getPartners();
+
+    return AwarenessCmsSnapshot(
+      contents: contents,
+      vouchers: vouchers,
+      partners: partners,
+    );
+  }
+
+  Future<List<AdminPartnerRecord>> getPartners() async {
+    try {
+      final response = await client
+          .from('reward_partners')
+          .select()
+          .order('updated_at', ascending: false);
+      return (response as List)
+          .map(
+            (row) => AdminPartnerRecord(
+              id: row['id'].toString(),
+              partnerCode: row['partner_code'] ?? '',
+              legalName: row['legal_name'] ?? '',
+              displayName: row['display_name'] ?? '',
+              category: row['category'] ?? 'Other',
+              verificationStatus: row['verification_status'] ?? 'pending',
+              isActive: row['is_active'] ?? true,
+              registrationNumber: row['registration_number'],
+              contactEmail: row['contact_email'],
+              contactPhone: row['contact_phone'],
+              websiteUrl: row['website_url'],
+              verificationNotes: row['verification_notes'],
+            ),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      if (error.code == 'PGRST205' || error.code == '42P01') return const [];
+      rethrow;
+    }
+  }
+
+  Future<void> savePartner(AdminPartnerDraft draft) async {
+    final data = {
+      'legal_name': draft.legalName.trim(),
+      'display_name': draft.displayName.trim(),
+      'category': draft.category,
+      'registration_number': _nullable(draft.registrationNumber),
+      'contact_email': _nullable(draft.contactEmail),
+      'contact_phone': _nullable(draft.contactPhone),
+      'website_url': _nullable(draft.websiteUrl),
+      'verification_status': draft.verificationStatus,
+      'verification_notes': _nullable(draft.verificationNotes),
+      'is_active': draft.isActive,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (draft.id == null) {
+      await client.from('reward_partners').insert(data);
+    } else {
+      await client.from('reward_partners').update(data).eq('id', draft.id!);
+    }
+  }
+
+  Future<void> archivePartner(String id) async {
+    await client
+        .from('reward_partners')
+        .update({
+          'is_active': false,
+          'verification_status': 'suspended',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', id);
+  }
+
+  Future<AdminVoucherDraft> getVoucher(String id) async {
+    final row = await client
+        .from('reward_vouchers')
+        .select('*,voucher_codes(code,status)')
+        .eq('id', id)
+        .single();
+    final codes = (row['voucher_codes'] as List?) ?? const [];
+    return AdminVoucherDraft(
+      id: id,
+      partnerId: row['partner_id']?.toString() ?? '',
+      partnerName: row['partner_name'] ?? '',
+      title: row['title'] ?? '',
+      discountAmount: row['discount_amount'] ?? '',
+      requiredXp: row['required_xp'] ?? 0,
+      validUntil:
+          DateTime.tryParse(row['valid_until'] ?? '') ??
+          DateTime.now().add(const Duration(days: 30)),
+      status: row['status'] ?? 'draft',
+      codes: codes
+          .where((code) => code['status'] == 'available')
+          .map<String>((code) => code['code'].toString())
+          .toList(),
+    );
   }
 
   AwarenessContentSummary _content(
@@ -259,15 +353,37 @@ class AwarenessAdminRepository {
       setContentStatus(item, 'archived');
 
   Future<void> saveVoucher(AdminVoucherDraft draft) async {
+    final codes = draft.codes
+        .map((code) => code.trim().toUpperCase())
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    if (draft.status == 'published' && codes.isEmpty) {
+      throw StateError(
+        'A published voucher must have at least one unique code.',
+      );
+    }
+    final partner = await client
+        .from('reward_partners')
+        .select('display_name,verification_status,is_active')
+        .eq('id', draft.partnerId)
+        .maybeSingle();
+    if (partner == null ||
+        partner['verification_status'] != 'verified' ||
+        partner['is_active'] != true) {
+      throw StateError(
+        'Only an active, verified reward partner can sponsor a voucher.',
+      );
+    }
     final data = {
-      'partner_name': draft.partnerName,
+      'partner_id': draft.partnerId,
+      'partner_name': partner['display_name'],
       'title': draft.title,
       'discount_amount': draft.discountAmount,
       'required_xp': draft.requiredXp,
       'valid_until': draft.validUntil.toIso8601String(),
       'promo_code_prefix': _voucherPrefix(draft.partnerName),
-      'status': draft.status,
-      'is_active': draft.status == 'published',
+      'status': draft.id == null ? 'draft' : draft.status,
+      'is_active': draft.id == null ? false : draft.status == 'published',
       'updated_at': DateTime.now().toIso8601String(),
     };
 
@@ -284,20 +400,51 @@ class AwarenessAdminRepository {
       await client.from('reward_vouchers').update(data).eq('id', voucherId);
     }
 
-    final codes = draft.codes
-        .map((code) => code.trim().toUpperCase())
-        .where((code) => code.isNotEmpty)
-        .toSet();
-    if (codes.isNotEmpty) {
+    final existingRows = await client
+        .from('voucher_codes')
+        .select('code,status')
+        .eq('voucher_id', voucherId);
+    final existing = {
+      for (final row in existingRows as List)
+        row['code'].toString().toUpperCase(): row['status'].toString(),
+    };
+    final newCodes = codes
+        .where((code) => !existing.containsKey(code))
+        .toList();
+    final restoreCodes = codes
+        .where((code) => existing[code] == 'disabled')
+        .toList();
+    final disableCodes = existing.entries
+        .where(
+          (entry) => entry.value == 'available' && !codes.contains(entry.key),
+        )
+        .map((entry) => entry.key)
+        .toList();
+    if (newCodes.isNotEmpty) {
       await client
           .from('voucher_codes')
-          .upsert(
-            codes
+          .insert(
+            newCodes
                 .map((code) => {'voucher_id': voucherId, 'code': code})
                 .toList(),
-            onConflict: 'code',
-            ignoreDuplicates: true,
           );
+    }
+    if (restoreCodes.isNotEmpty) {
+      await client
+          .from('voucher_codes')
+          .update({'status': 'available'})
+          .eq('voucher_id', voucherId)
+          .inFilter('code', restoreCodes);
+    }
+    if (disableCodes.isNotEmpty) {
+      await client
+          .from('voucher_codes')
+          .update({'status': 'disabled'})
+          .eq('voucher_id', voucherId)
+          .inFilter('code', disableCodes);
+    }
+    if (draft.id == null && draft.status != 'draft') {
+      await setVoucherStatus(voucherId, draft.status);
     }
   }
 
@@ -311,6 +458,8 @@ class AwarenessAdminRepository {
         })
         .eq('id', id);
   }
+
+  Future<void> archiveVoucher(String id) => setVoucherStatus(id, 'archived');
 
   String? _nullable(String? value) {
     final clean = value?.trim();

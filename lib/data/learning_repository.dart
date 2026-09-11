@@ -11,11 +11,22 @@ class LearningRepository {
     final userId = client.auth.currentUser?.id;
     if (userId == null) throw Exception("User not authenticated");
 
-    final profileData = await client
-        .from('profiles')
-        .select('total_xp, available_xp, current_level')
-        .eq('id', userId)
-        .single();
+    Map<String, dynamic> profileData;
+    try {
+      profileData = await client
+          .from('profiles')
+          .select('total_xp, available_xp, current_level')
+          .eq('id', userId)
+          .single();
+    } on PostgrestException catch (error) {
+      if (error.code != '42703' && error.code != 'PGRST204') rethrow;
+      // Keeps learning available while the spendable-XP migration is pending.
+      profileData = await client
+          .from('profiles')
+          .select('total_xp, current_level')
+          .eq('id', userId)
+          .single();
+    }
 
     final vouchersResponse = await client
         .from('user_claimed_vouchers')
@@ -34,10 +45,18 @@ class LearningRepository {
   }
 
   String _getRankTitle(int level) {
-    if (level >= 10) return 'Scam-Proof Guardian';
-    if (level >= 7) return 'Fraud Fighter';
-    if (level >= 4) return 'Safety Sentinel';
-    return 'Vigilant Voyager';
+    return switch (level) {
+      <= 1 => 'Vigilant Voyager',
+      2 => 'Scam Spotter',
+      3 => 'Street-Smart Explorer',
+      4 => 'Safety Sentinel',
+      5 => 'Fraud Watcher',
+      6 => 'Scam Defender',
+      7 => 'Fraud Fighter',
+      8 => 'Threat Hunter',
+      9 => 'Safety Champion',
+      _ => 'Scam-Proof Guardian · Rank $level',
+    };
   }
 
   Future<List<LearningLesson>> getLessons() async {
@@ -76,13 +95,23 @@ class LearningRepository {
     }).toList();
   }
 
-  Future<void> completeLesson(String lessonId) async {
+  Future<int> completeLesson(String lessonId, {int fallbackXp = 0}) async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null) return;
-    await client.rpc(
-      'complete_learning_lesson',
-      params: {'target_lesson_id': lessonId},
-    );
+    if (userId == null) return 0;
+    try {
+      final result = await client.rpc(
+        'complete_learning_lesson_v2',
+        params: {'target_lesson_id': lessonId},
+      );
+      return result is num ? result.toInt() : 0;
+    } on PostgrestException catch (error) {
+      if (error.code != 'PGRST202' && error.code != '42883') rethrow;
+      final result = await client.rpc(
+        'complete_learning_lesson',
+        params: {'target_lesson_id': lessonId},
+      );
+      return result == true ? fallbackXp : 0;
+    }
   }
 
   Future<List<Scenario>> getScenarios() async {
@@ -141,15 +170,23 @@ class LearningRepository {
     }).toList();
   }
 
-  Future<bool> completeScenario(String scenarioId) async {
+  Future<int> completeScenario(String scenarioId, {int fallbackXp = 0}) async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null) return false;
-
-    final result = await client.rpc(
-      'complete_learning_scenario',
-      params: {'target_scenario_id': scenarioId},
-    );
-    return result == true;
+    if (userId == null) return 0;
+    try {
+      final result = await client.rpc(
+        'complete_learning_scenario_v2',
+        params: {'target_scenario_id': scenarioId},
+      );
+      return result is num ? result.toInt() : 0;
+    } on PostgrestException catch (error) {
+      if (error.code != 'PGRST202' && error.code != '42883') rethrow;
+      final result = await client.rpc(
+        'complete_learning_scenario',
+        params: {'target_scenario_id': scenarioId},
+      );
+      return result == true ? fallbackXp : 0;
+    }
   }
 
   Future<List<QuizQuestion>> getQuizQuestions() async {

@@ -40,6 +40,50 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
     await _dashboard;
   }
 
+  Future<void> _openHotspotLesson(LearningLesson lesson) async {
+    var isReview = false;
+    if (lesson.isCompleted) {
+      isReview =
+          await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              icon: const Icon(
+                Icons.task_alt,
+                color: AppColors.green,
+                size: 34,
+              ),
+              title: const Text('Lesson already completed'),
+              content: const Text(
+                'Are you sure you want to study this lesson again? A small practice bonus is available once per day.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Keep as done'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Study again'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!isReview || !mounted) return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonDetailScreen(
+          lesson: lesson,
+          repository: widget.repository,
+          isReview: isReview,
+        ),
+      ),
+    );
+    if (mounted) await _refresh();
+  }
+
   @override
   Widget build(BuildContext context) => MobileShell(
     currentNavigationIndex: 5,
@@ -93,15 +137,7 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
                 _HotspotCard(
                   lesson: data.hotspotLesson!,
                   distanceMeters: data.hotspotDistanceMeters,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LessonDetailScreen(
-                        lesson: data.hotspotLesson!,
-                        repository: widget.repository,
-                      ),
-                    ),
-                  ).then((_) => _refresh()),
+                  onTap: () => _openHotspotLesson(data.hotspotLesson!),
                 ),
                 const SizedBox(height: 18),
               ],
@@ -317,13 +353,26 @@ class _ProgressHero extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(100),
               ),
-              child: Text(
-                '${profile.totalXp} XP',
-                style: const TextStyle(
-                  color: AppColors.blue,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${profile.spendableXp} XP',
+                    style: const TextStyle(
+                      color: AppColors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Text(
+                    'REWARD BALANCE',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 6,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -333,7 +382,7 @@ class _ProgressHero extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${profile.xpIntoCurrentLevel} / 200 XP to next level',
+              'Level progress · ${profile.xpIntoCurrentLevel} / 200',
               style: const TextStyle(color: Colors.white70, fontSize: 9),
             ),
             Text(

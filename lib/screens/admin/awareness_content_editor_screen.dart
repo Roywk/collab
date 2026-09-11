@@ -241,7 +241,16 @@ class _AwarenessContentEditorScreenState
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        final message = error.toString();
+        setState(() {
+          _error =
+              message.contains('23505') ||
+                  message.toLowerCase().contains('duplicate')
+              ? 'A ${widget.type.label.toLowerCase()} with the same title or question already exists. Edit the existing item instead of publishing a duplicate.'
+              : message;
+        });
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -31,10 +31,15 @@ class AwarenessContentSummary {
 }
 
 class AwarenessCmsSnapshot {
-  const AwarenessCmsSnapshot({required this.contents, required this.vouchers});
+  const AwarenessCmsSnapshot({
+    required this.contents,
+    required this.vouchers,
+    this.partners = const [],
+  });
 
   final List<AwarenessContentSummary> contents;
   final List<AdminVoucherRecord> vouchers;
+  final List<AdminPartnerRecord> partners;
 
   int get lessons =>
       contents.where((item) => item.type == AwarenessContentType.lesson).length;
@@ -48,6 +53,66 @@ class AwarenessCmsSnapshot {
       contents.where((item) => item.status == 'published').length;
   int get availableCodes =>
       vouchers.fold(0, (sum, voucher) => sum + voucher.availableCodes);
+}
+
+class AdminPartnerRecord {
+  const AdminPartnerRecord({
+    required this.id,
+    required this.partnerCode,
+    required this.legalName,
+    required this.displayName,
+    required this.category,
+    required this.verificationStatus,
+    required this.isActive,
+    this.registrationNumber,
+    this.contactEmail,
+    this.contactPhone,
+    this.websiteUrl,
+    this.verificationNotes,
+  });
+
+  final String id;
+  final String partnerCode;
+  final String legalName;
+  final String displayName;
+  final String category;
+  final String verificationStatus;
+  final bool isActive;
+  final String? registrationNumber;
+  final String? contactEmail;
+  final String? contactPhone;
+  final String? websiteUrl;
+  final String? verificationNotes;
+
+  bool get isVerified => verificationStatus == 'verified' && isActive;
+}
+
+class AdminPartnerDraft {
+  const AdminPartnerDraft({
+    this.id,
+    required this.legalName,
+    required this.displayName,
+    required this.category,
+    required this.verificationStatus,
+    required this.isActive,
+    this.registrationNumber,
+    this.contactEmail,
+    this.contactPhone,
+    this.websiteUrl,
+    this.verificationNotes,
+  });
+
+  final String? id;
+  final String legalName;
+  final String displayName;
+  final String category;
+  final String verificationStatus;
+  final bool isActive;
+  final String? registrationNumber;
+  final String? contactEmail;
+  final String? contactPhone;
+  final String? websiteUrl;
+  final String? verificationNotes;
 }
 
 class AdminLessonDraft {
@@ -159,6 +224,7 @@ class AdminVoucherRecord {
     required this.totalCodes,
     required this.availableCodes,
     required this.claimedCodes,
+    this.partnerId,
   });
 
   final String id;
@@ -172,6 +238,7 @@ class AdminVoucherRecord {
   final int totalCodes;
   final int availableCodes;
   final int claimedCodes;
+  final String? partnerId;
 }
 
 class AdminVoucherDraft {
@@ -184,6 +251,7 @@ class AdminVoucherDraft {
     required this.validUntil,
     required this.status,
     required this.codes,
+    required this.partnerId,
   });
 
   final String? id;
@@ -194,4 +262,5 @@ class AdminVoucherDraft {
   final DateTime validUntil;
   final String status;
   final List<String> codes;
+  final String partnerId;
 }

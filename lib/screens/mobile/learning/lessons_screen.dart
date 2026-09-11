@@ -145,6 +145,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
   Widget _buildLessonTile(BuildContext context, LearningLesson lesson) {
     return InkWell(
       onTap: () async {
+        var isReview = false;
         if (lesson.isCompleted) {
           final studyAgain =
               await showDialog<bool>(
@@ -157,7 +158,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
                   ),
                   title: const Text('Lesson already completed'),
                   content: const Text(
-                    'Are you sure you want to study this lesson again? Your completion and XP will remain unchanged.',
+                    'Are you sure you want to study this lesson again? A small practice bonus is available once per day.',
                   ),
                   actions: [
                     TextButton(
@@ -173,6 +174,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
               ) ??
               false;
           if (!studyAgain || !context.mounted) return;
+          isReview = true;
         }
         final result = await Navigator.push(
           context,
@@ -180,6 +182,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
             builder: (_) => LessonDetailScreen(
               lesson: lesson,
               repository: widget.repository,
+              isReview: isReview,
             ),
           ),
         );

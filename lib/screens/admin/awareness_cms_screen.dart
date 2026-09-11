@@ -8,6 +8,7 @@ import '../../data/awareness_admin_repository.dart';
 import '../../models/awareness_admin_models.dart';
 import 'admin_shell.dart';
 import 'awareness_content_editor_screen.dart';
+import 'awareness_management_dialogs.dart';
 
 class AwarenessCmsScreen extends StatefulWidget {
   const AwarenessCmsScreen({
@@ -115,6 +116,113 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     }
   }
 
+  Future<void> _editPartner([AdminPartnerRecord? partner]) async {
+    final draft = await showDialog<AdminPartnerDraft>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PartnerEditorDialog(partner: partner),
+    );
+    if (draft == null || !mounted) return;
+    try {
+      await _cmsRepository.savePartner(draft);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Partner could not be saved', error);
+    }
+  }
+
+  Future<void> _archivePartner(AdminPartnerRecord partner) async {
+    final approved = await _confirm(
+      'Suspend this partner?',
+      'Their vouchers will remain auditable, but new rewards cannot be published for ${partner.displayName}.',
+    );
+    if (!approved) return;
+    try {
+      await _cmsRepository.archivePartner(partner.id);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Partner could not be suspended', error);
+    }
+  }
+
+  Future<void> _editVoucher(
+    AwarenessCmsSnapshot data, [
+    AdminVoucherRecord? voucher,
+  ]) async {
+    final verified = data.partners
+        .where((partner) => partner.isVerified)
+        .toList();
+    if (verified.isEmpty) {
+      _showError(
+        'A verified partner is required',
+        'Review and verify a merchant partnership before deploying a voucher.',
+      );
+      return;
+    }
+    AdminVoucherDraft? existing;
+    if (voucher != null) {
+      try {
+        existing = await _cmsRepository.getVoucher(voucher.id);
+      } catch (error) {
+        if (mounted) _showError('Voucher could not be loaded', error);
+        return;
+      }
+    }
+    if (!mounted) return;
+    final draft = await showDialog<AdminVoucherDraft>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => VoucherEditorDialog(partners: verified, draft: existing),
+    );
+    if (draft == null || !mounted) return;
+    try {
+      await _cmsRepository.saveVoucher(draft);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Voucher could not be saved', error);
+    }
+  }
+
+  Future<void> _archiveVoucher(AdminVoucherRecord voucher) async {
+    final approved = await _confirm(
+      'Archive this voucher?',
+      'It will disappear from the traveller app. Existing claims and audit history stay intact.',
+    );
+    if (!approved) return;
+    try {
+      await _cmsRepository.archiveVoucher(voucher.id);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Voucher could not be archived', error);
+    }
+  }
+
+  Future<bool> _confirm(String title, String message) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  void _showError(String title, Object error) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$title: $error')));
+  }
+
   @override
   Widget build(BuildContext context) => AdminShell(
     selectedMenuItem: 'Awareness CMS',
@@ -190,6 +298,69 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                     Row(
                       children: [
                         const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Verified reward partners',
+                                style: TextStyle(
+                                  color: AppColors.navy,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'A merchant must pass partnership review before any voucher can be deployed.',
+                                style: TextStyle(
+                                  color: AppColors.slate,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _editPartner(),
+                          icon: const Icon(Icons.add_business_outlined),
+                          label: const Text('Add merchant'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (data.partners.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.amberSoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'No partnership registry found. Apply the latest Module 5 migration, then add or review a merchant.',
+                          style: TextStyle(color: AppColors.navy, fontSize: 10),
+                        ),
+                      )
+                    else
+                      ...data.partners.map(
+                        (partner) => _PartnerRow(
+                          partner: partner,
+                          onEdit: () => _editPartner(partner),
+                          onArchive: () => _archivePartner(partner),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              SurfaceCard(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
                           child: Text(
                             'Learning content',
                             style: TextStyle(
@@ -250,13 +421,24 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Reward inventory',
-                      style: TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Reward inventory',
+                            style: TextStyle(
+                              color: AppColors.navy,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => _editVoucher(data),
+                          icon: const Icon(Icons.add_card_outlined),
+                          label: const Text('Deploy voucher'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     const Text(
@@ -268,7 +450,11 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                       const Text('No rewards configured.')
                     else
                       ...data.vouchers.map(
-                        (voucher) => _VoucherRow(voucher: voucher),
+                        (voucher) => _VoucherRow(
+                          voucher: voucher,
+                          onEdit: () => _editVoucher(data, voucher),
+                          onArchive: () => _archiveVoucher(voucher),
+                        ),
                       ),
                   ],
                 ),
@@ -435,8 +621,14 @@ class _ContentRow extends StatelessWidget {
 }
 
 class _VoucherRow extends StatelessWidget {
-  const _VoucherRow({required this.voucher});
+  const _VoucherRow({
+    required this.voucher,
+    required this.onEdit,
+    required this.onArchive,
+  });
   final AdminVoucherRecord voucher;
+  final VoidCallback onEdit;
+  final VoidCallback onArchive;
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
@@ -454,24 +646,113 @@ class _VoucherRow extends StatelessWidget {
     subtitle: Text(
       '${voucher.partnerName} · costs ${voucher.requiredXp} XP · ${voucher.claimedCodes}/${voucher.totalCodes} redeemed',
     ),
-    trailing: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: voucher.availableCodes > 0
-            ? AppColors.greenSoft
-            : AppColors.redSoft,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        '${voucher.availableCodes} available',
-        style: TextStyle(
-          color: voucher.availableCodes > 0 ? AppColors.green : AppColors.red,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: voucher.availableCodes > 0
+                ? AppColors.greenSoft
+                : AppColors.redSoft,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '${voucher.availableCodes} available',
+            style: TextStyle(
+              color: voucher.availableCodes > 0
+                  ? AppColors.green
+                  : AppColors.red,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
-      ),
+        IconButton(
+          tooltip: 'Edit voucher',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined, color: AppColors.blue),
+        ),
+        IconButton(
+          tooltip: 'Archive voucher',
+          onPressed: onArchive,
+          icon: const Icon(Icons.archive_outlined, color: AppColors.slate),
+        ),
+      ],
     ),
   );
+}
+
+class _PartnerRow extends StatelessWidget {
+  const _PartnerRow({
+    required this.partner,
+    required this.onEdit,
+    required this.onArchive,
+  });
+  final AdminPartnerRecord partner;
+  final VoidCallback onEdit;
+  final VoidCallback onArchive;
+
+  @override
+  Widget build(BuildContext context) {
+    final verified = partner.isVerified;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: verified
+                ? AppColors.greenSoft
+                : AppColors.amberSoft,
+            child: Icon(
+              verified ? Icons.verified_outlined : Icons.fact_check_outlined,
+              color: verified ? AppColors.green : AppColors.amber,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${partner.partnerCode} · ${partner.displayName}',
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '${partner.legalName} · ${partner.registrationNumber ?? 'Registration pending'} · ${partner.category}',
+                  style: const TextStyle(color: AppColors.slate, fontSize: 9),
+                ),
+              ],
+            ),
+          ),
+          _Status(status: partner.verificationStatus),
+          IconButton(
+            tooltip: 'Review or edit',
+            onPressed: onEdit,
+            icon: const Icon(
+              Icons.manage_search_outlined,
+              color: AppColors.blue,
+            ),
+          ),
+          if (partner.isActive)
+            IconButton(
+              tooltip: 'Suspend partner',
+              onPressed: onArchive,
+              icon: const Icon(Icons.block_outlined, color: AppColors.red),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Status extends StatelessWidget {
@@ -479,17 +760,29 @@ class _Status extends StatelessWidget {
   final String status;
   @override
   Widget build(BuildContext context) {
-    final published = status == 'published';
+    final positive = status == 'published' || status == 'verified';
+    final negative =
+        status == 'archived' || status == 'rejected' || status == 'suspended';
+    final color = positive
+        ? AppColors.green
+        : negative
+        ? AppColors.red
+        : AppColors.amber;
+    final background = positive
+        ? AppColors.greenSoft
+        : negative
+        ? AppColors.redSoft
+        : AppColors.amberSoft;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: published ? AppColors.greenSoft : AppColors.amberSoft,
+        color: background,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         status.toUpperCase(),
         style: TextStyle(
-          color: published ? AppColors.green : AppColors.amber,
+          color: color,
           fontSize: 8,
           fontWeight: FontWeight.w900,
         ),

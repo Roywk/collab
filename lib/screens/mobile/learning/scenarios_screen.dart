@@ -99,7 +99,7 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                     ),
                     title: const Text('Challenge already completed'),
                     content: const Text(
-                      'This challenge has already been done. Are you sure you want to try it again? Your completion and XP will remain unchanged.',
+                      'This challenge has already been done. Are you sure you want to try it again? Complete it correctly to earn the daily practice bonus.',
                     ),
                     actions: [
                       TextButton(
@@ -212,7 +212,9 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '+${scenario.xpReward} XP • ${scenario.status}',
+                    isCompleted
+                        ? 'Mastery practice XP available • ${scenario.status}'
+                        : 'Earn ${scenario.xpReward} XP after a correct completion',
                     style: TextStyle(
                       color: isCompleted ? AppColors.green : AppColors.slate,
                       fontSize: 10,
