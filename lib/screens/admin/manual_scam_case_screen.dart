@@ -177,7 +177,6 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenBankHotlines: widget.onOpenBankHotlines,
       onOpenEmergencyFacilities: widget.onOpenEmergencyFacilities,
       headerTitle: 'Publish Official Cases',

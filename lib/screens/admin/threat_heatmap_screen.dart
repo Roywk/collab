@@ -101,7 +101,6 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
       onOpenDashboard: widget.onOpenDashboard,
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenHeatmap: widget.onOpenHeatmap,
       child: FutureBuilder<ScamMapLoadResult>(

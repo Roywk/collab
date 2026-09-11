@@ -18,7 +18,6 @@ class ReportDetailScreen extends StatefulWidget {
     this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
-    this.onOpenSettings,
     this.onOpenPublishScamCase,
     this.onSignOut,
     super.key,
@@ -32,7 +31,6 @@ class ReportDetailScreen extends StatefulWidget {
   final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
-  final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenPublishScamCase;
   final Future<void> Function()? onSignOut;
 
@@ -156,7 +154,6 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onSignOut: widget.onSignOut,
       child: ListView(

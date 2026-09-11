@@ -36,7 +36,6 @@ class AdminShell extends StatelessWidget {
     this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
-    this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
     this.headerTitle,
@@ -58,7 +57,6 @@ class AdminShell extends StatelessWidget {
   final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
-  final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
 
@@ -127,7 +125,6 @@ class AdminShell extends StatelessWidget {
                         onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                         onOpenThreatDatabase: onOpenThreatDatabase,
                         onOpenAwarenessCms: onOpenAwarenessCms,
-                        onOpenSettings: onOpenSettings,
                         onOpenBankHotlines: onOpenBankHotlines,
                         onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                       ),
@@ -154,7 +151,6 @@ class AdminShell extends StatelessWidget {
                   onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                   onOpenThreatDatabase: onOpenThreatDatabase,
                   onOpenAwarenessCms: onOpenAwarenessCms,
-                  onOpenSettings: onOpenSettings,
                   onOpenBankHotlines: onOpenBankHotlines,
                   onOpenEmergencyFacilities: onOpenEmergencyFacilities,
                 ),
@@ -255,7 +251,6 @@ class AdminSidebar extends StatelessWidget {
     this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
-    this.onOpenSettings,
     this.onOpenBankHotlines,
     this.onOpenEmergencyFacilities,
     super.key,
@@ -270,7 +265,6 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
-  final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenBankHotlines;
   final VoidCallback? onOpenEmergencyFacilities;
 
@@ -299,7 +293,6 @@ class AdminSidebar extends StatelessWidget {
       (Icons.phone_outlined, 'Bank Hotline Mgmt'),
       (Icons.location_on_outlined, 'Emergency Facilities'),
       (Icons.menu_book_outlined, 'Awareness CMS'),
-      (Icons.settings_outlined, 'System Logs & Settings'),
     ];
 
     return Container(
@@ -395,16 +388,11 @@ class AdminSidebar extends StatelessWidget {
                               openSection(onOpenEmergencyFacilities, item.$2);
                               break;
                             case 'Awareness CMS':
-                              if (onOpenAwareness != null) {
-                                onOpenAwareness!.call();
-                              } else if (onOpenAwarenessCms != null) {
+                              if (onOpenAwarenessCms != null) {
                                 onOpenAwarenessCms!.call();
                               } else {
                                 openSection(null, item.$2);
                               }
-                              break;
-                            case 'System Logs & Settings':
-                              openSection(onOpenSettings, item.$2);
                               break;
                           }
                         },

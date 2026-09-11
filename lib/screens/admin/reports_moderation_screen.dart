@@ -64,13 +64,20 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
     if (loc == null) return true;
     final s = loc.toLowerCase().trim();
     if (s.isEmpty) return true;
-    
+
     // Catch common placeholder strings
     final placeholders = [
-      'unknown', 'unknow', 'n/a', 'null', 'undefined', 'none', 
-      'unknown location', 'unknow location', 'location unknown'
+      'unknown',
+      'unknow',
+      'n/a',
+      'null',
+      'undefined',
+      'none',
+      'unknown location',
+      'unknow location',
+      'location unknown',
     ];
-    
+
     return placeholders.any((p) => s.contains(p));
   }
 
@@ -85,8 +92,6 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Reports Moderation',
-    return AdminShell(
-      selectedMenuItem: 'Reports Moderation',
       headerTitle: 'Reports Moderation',
       onSignOut: widget.onSignOut,
       onOpenDashboard: widget.onOpenDashboard,
@@ -95,7 +100,6 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onSearchChanged: (val) =>
           setState(() => _searchQuery = val.toLowerCase()),
@@ -118,7 +122,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
             final matchesCategory =
                 _categoryFilter == 'All Categories' ||
                 r.category == _categoryFilter;
-            
+
             final locationText = _getLocationDisplay(r).toLowerCase();
             final matchesSearch =
                 _searchQuery.isEmpty ||
@@ -126,7 +130,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                 r.title.toLowerCase().contains(_searchQuery) ||
                 r.category.toLowerCase().contains(_searchQuery) ||
                 locationText.contains(_searchQuery);
-            
+
             final matchesRisk = !_highRiskOnly || (r.amountLost ?? 0) > 200;
 
             return matchesStatus &&
@@ -335,8 +339,8 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
         Switch(
           value: _highRiskOnly,
           onChanged: (v) => setState(() => _highRiskOnly = v),
-          activeTrackColor: AppColors.blue.withOpacity(0.5),
-          activeColor: AppColors.blue,
+          activeTrackColor: AppColors.blue.withValues(alpha: 0.5),
+          activeThumbColor: AppColors.blue,
         ),
       ],
     );
@@ -417,8 +421,12 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
-                        color: _isLocationUnknown(r.locationName) ? AppColors.slate : AppColors.navy,
-                        fontStyle: _isLocationUnknown(r.locationName) ? FontStyle.italic : FontStyle.normal,
+                        color: _isLocationUnknown(r.locationName)
+                            ? AppColors.slate
+                            : AppColors.navy,
+                        fontStyle: _isLocationUnknown(r.locationName)
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                       ),
                     ),
                   ),
@@ -461,7 +469,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -511,7 +519,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                           (r) => CircleMarker(
                             point: LatLng(r.latitude, r.longitude),
                             radius: 8,
-                            color: Colors.red.withOpacity(0.5),
+                            color: Colors.red.withValues(alpha: 0.5),
                             borderColor: Colors.white,
                             borderStrokeWidth: 2,
                           ),
@@ -559,7 +567,6 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
           onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
           onOpenThreatDatabase: widget.onOpenThreatDatabase,
           onOpenAwarenessCms: widget.onOpenAwarenessCms,
-          onOpenSettings: widget.onOpenSettings,
           onOpenPublishScamCase: widget.onOpenPublishScamCase,
           onSignOut: widget.onSignOut,
         ),

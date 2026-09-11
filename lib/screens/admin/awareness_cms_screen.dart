@@ -234,7 +234,6 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
     onOpenThreatDatabase: widget.onOpenThreatDatabase,
     onOpenAwarenessCms: widget.onOpenAwarenessCms,
-    onOpenSettings: widget.onOpenSettings,
     onOpenPublishScamCase: widget.onOpenPublishScamCase,
     child: FutureBuilder<AwarenessCmsSnapshot>(
       future: _snapshot,

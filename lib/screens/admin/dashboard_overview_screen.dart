@@ -369,7 +369,6 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       child: FutureBuilder<Map<String, dynamic>>(
         future: _statsFuture,

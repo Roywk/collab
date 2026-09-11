@@ -11,7 +11,6 @@ import 'awareness_cms_screen.dart';
 import 'dashboard_overview_screen.dart';
 import 'manual_scam_case_screen.dart';
 import 'reports_moderation_screen.dart';
-import 'system_settings_screen.dart';
 import 'threat_database_screen.dart';
 import 'threat_heatmap_screen.dart';
 import 'verified_merchants_screen.dart';
@@ -58,7 +57,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     void openMerchants() => _onSectionChanged('Verified Merchants');
     void openThreatDatabase() => _onSectionChanged('Threat Database');
     void openAwareness() => _onSectionChanged('Awareness CMS');
-    void openSettings() => _onSectionChanged('System Logs & Settings');
     void openBanks() => _onSectionChanged('Bank Hotline Mgmt');
     void openFacilities() => _onSectionChanged('Emergency Facilities');
 
@@ -71,7 +69,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       merchants: openMerchants,
       threatDatabase: openThreatDatabase,
       awareness: openAwareness,
-      settings: openSettings,
       publish: openPublish,
     );
 
@@ -90,7 +87,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenBankHotlines: openBanks,
           onOpenEmergencyFacilities: openFacilities,
         );
@@ -104,7 +100,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
       case 'Geospatial Heatmap':
@@ -117,7 +112,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
       case 'Verified Merchants':
@@ -130,7 +124,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
       case 'Threat Database':
@@ -143,7 +136,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
       case 'Awareness CMS':
@@ -156,22 +148,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
-      case 'System Logs & Settings':
-        screen = SystemSettingsScreen(
-          repository: widget.repository,
-          onSignOut: widget.onSignOut,
-          onOpenDashboard: commonCallbacks.dashboard,
-          onOpenReports: commonCallbacks.reports,
-          onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
-          onOpenThreatDatabase: commonCallbacks.threatDatabase,
-          onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
-          onOpenPublishScamCase: commonCallbacks.publish,
-        );
+
       case 'Bank Hotline Mgmt':
         screen = AdminBankHotlineScreen(
           repository: SupabaseAdminBankRepository(
@@ -199,7 +178,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenSettings: commonCallbacks.settings,
           onOpenPublishScamCase: commonCallbacks.publish,
         );
     }
@@ -216,7 +194,6 @@ class _AdminCallbacks {
     required this.merchants,
     required this.threatDatabase,
     required this.awareness,
-    required this.settings,
     required this.publish,
   });
 
@@ -226,6 +203,5 @@ class _AdminCallbacks {
   final VoidCallback merchants;
   final VoidCallback threatDatabase;
   final VoidCallback awareness;
-  final VoidCallback settings;
   final VoidCallback publish;
 }

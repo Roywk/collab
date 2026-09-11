@@ -228,7 +228,6 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: () {},
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenBankHotlines: openBankHotlineManagement,
       onOpenEmergencyFacilities: openEmergencyFacilityManagement,
