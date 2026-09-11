@@ -17,6 +17,7 @@ class QuizIntroScreen extends StatefulWidget {
 class _QuizIntroScreenState extends State<QuizIntroScreen> {
   late final Future<List<LearningQuiz>> _quizzes;
   int _selectedQuiz = 0;
+  String _difficulty = 'All difficulties';
 
   @override
   void initState() {
@@ -110,7 +111,21 @@ class _QuizIntroScreenState extends State<QuizIntroScreen> {
             ),
           );
         }
-        final quizzes = snapshot.data!;
+        final allQuizzes = snapshot.data!;
+        final quizzes = allQuizzes.where((quiz) {
+          return _difficulty == 'All difficulties' ||
+              quiz.difficulty == _difficulty;
+        }).toList();
+        if (quizzes.isEmpty) {
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              _difficultyFilter(),
+              const SizedBox(height: 36),
+              const Center(child: Text('No quizzes match this difficulty.')),
+            ],
+          );
+        }
         final quiz = quizzes[_selectedQuiz.clamp(0, quizzes.length - 1)];
         final questions = quiz.questions;
         final categories = questions.map((q) => q.category).toSet().toList();
@@ -121,6 +136,8 @@ class _QuizIntroScreenState extends State<QuizIntroScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
           children: [
+            _difficultyFilter(),
+            const SizedBox(height: 14),
             if (quizzes.length > 1) ...[
               const Text(
                 'CHOOSE A CHALLENGE',
@@ -301,6 +318,22 @@ class _QuizIntroScreenState extends State<QuizIntroScreen> {
         );
       },
     ),
+  );
+
+  Widget _difficultyFilter() => DropdownButtonFormField<String>(
+    initialValue: _difficulty,
+    isExpanded: true,
+    decoration: const InputDecoration(
+      labelText: 'Difficulty',
+      prefixIcon: Icon(Icons.signal_cellular_alt),
+    ),
+    items: const ['All difficulties', 'Beginner', 'Intermediate', 'Advanced']
+        .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+        .toList(),
+    onChanged: (value) => setState(() {
+      _difficulty = value ?? 'All difficulties';
+      _selectedQuiz = 0;
+    }),
   );
 }
 

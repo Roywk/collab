@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/app_theme.dart';
@@ -164,13 +165,38 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SelectableText(
-                      code,
-                      style: const TextStyle(
-                        color: AppColors.blue,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: code));
+                        if (!dialogContext.mounted) return;
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('Voucher code copied.')),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                code,
+                                style: const TextStyle(
+                                  color: AppColors.blue,
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.copy_outlined,
+                              color: AppColors.blue,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -193,6 +219,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                         voucherTitle: voucher.title,
                         benefit: voucher.discountAmount,
                         validCode: code,
+                        repository: widget.repository,
                       ),
                     ),
                   );
@@ -493,7 +520,9 @@ class _RewardCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        voucher.isClaimed
+                        voucher.isUsed
+                            ? 'Already used'
+                            : voucher.isClaimed
                             ? 'Already redeemed'
                             : !voucher.isAvailable
                             ? 'Currently out of stock'
@@ -534,6 +563,7 @@ class _RewardCard extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed:
                         busy ||
+                            voucher.isUsed ||
                             (!voucher.isClaimed &&
                                 (!voucher.isUnlocked || !voucher.isAvailable))
                         ? null
@@ -554,7 +584,9 @@ class _RewardCard extends StatelessWidget {
                             size: 17,
                           ),
                     label: Text(
-                      voucher.isClaimed
+                      voucher.isUsed
+                          ? 'Already Used'
+                          : voucher.isClaimed
                           ? 'View my code'
                           : !voucher.isAvailable
                           ? 'Out of stock'

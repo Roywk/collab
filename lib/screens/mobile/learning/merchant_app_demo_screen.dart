@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_theme.dart';
+import '../../../data/learning_repository.dart';
 
 class MerchantAppDemoScreen extends StatefulWidget {
   const MerchantAppDemoScreen({
@@ -8,6 +9,7 @@ class MerchantAppDemoScreen extends StatefulWidget {
     required this.voucherTitle,
     required this.benefit,
     required this.validCode,
+    required this.repository,
     super.key,
   });
 
@@ -15,6 +17,7 @@ class MerchantAppDemoScreen extends StatefulWidget {
   final String voucherTitle;
   final String benefit;
   final String validCode;
+  final LearningRepository repository;
 
   @override
   State<MerchantAppDemoScreen> createState() => _MerchantAppDemoScreenState();
@@ -24,6 +27,7 @@ class _MerchantAppDemoScreenState extends State<MerchantAppDemoScreen> {
   final _code = TextEditingController();
   String? _message;
   bool _success = false;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -31,16 +35,62 @@ class _MerchantAppDemoScreenState extends State<MerchantAppDemoScreen> {
     super.dispose();
   }
 
-  void _apply() {
+  Future<void> _apply() async {
     final matches =
         _code.text.trim().toUpperCase() ==
         widget.validCode.trim().toUpperCase();
-    setState(() {
-      _success = matches;
-      _message = matches
-          ? '${widget.benefit} applied successfully to ${widget.voucherTitle}.'
-          : 'That code does not match this reward. Check the characters and try again.';
-    });
+    if (!matches) {
+      setState(() {
+        _success = false;
+        _message =
+            'That code does not match this reward. Check the characters and try again.';
+      });
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      await widget.repository.useVoucherCode(_code.text);
+      if (!mounted) return;
+      setState(() {
+        _success = true;
+        _message =
+            '${widget.partnerName} has successfully applied ${widget.benefit} to ${widget.voucherTitle}.';
+      });
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(
+            Icons.check_circle,
+            color: AppColors.green,
+            size: 52,
+          ),
+          title: const Text('Voucher applied successfully'),
+          content: Text(_message!, textAlign: TextAlign.center),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/learn', (route) => route.isFirst);
+              },
+              child: const Text('Return to Learning Page'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _success = false;
+        _message = error.toString().contains('already been used')
+            ? 'This voucher has already been used.'
+            : 'The voucher could not be applied. Please try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -113,7 +163,7 @@ class _MerchantAppDemoScreenState extends State<MerchantAppDemoScreen> {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: _apply,
+            onPressed: _submitting ? null : _apply,
             icon: const Icon(Icons.verified_outlined),
             label: const Text('Apply code'),
           ),

@@ -3,6 +3,7 @@
 
 alter table public.profiles alter column current_level set default 0;
 alter table public.profiles drop constraint if exists profiles_current_level_check;
+alter table public.profiles drop constraint if exists profiles_learning_level_check;
 alter table public.profiles add constraint profiles_current_level_check
   check (current_level between 0 and 50);
 update public.profiles
@@ -22,10 +23,10 @@ begin
     raise exception 'Invalid XP award';
   end if;
   update public.profiles
-  set total_xp = coalesce(total_xp, 0) + xp_amount,
-      available_xp = coalesce(available_xp, 0) + xp_amount,
+  set total_xp = least(9999, coalesce(total_xp, 0) + xp_amount),
+      available_xp = least(9999, coalesce(available_xp, 0) + xp_amount),
       current_level = least(50,
-        floor((coalesce(total_xp, 0) + xp_amount) / 200.0)::integer),
+        floor(least(9999, coalesce(total_xp, 0) + xp_amount) / 200.0)::integer),
       updated_at = now()
   where id = auth.uid();
 end;

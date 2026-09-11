@@ -9,6 +9,7 @@ import '../../core/app_widgets.dart';
 import '../../data/admin_repository.dart';
 import '../../data/awareness_admin_repository.dart';
 import '../../models/awareness_admin_models.dart';
+import '../../services/awareness_report_export_service.dart';
 import 'admin_shell.dart';
 import 'awareness_content_editor_screen.dart';
 import 'awareness_management_dialogs.dart';
@@ -52,6 +53,9 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   Timer? _reloadDebounce;
   bool _showAnalytics = false;
   Future<AwarenessAnalytics>? _analytics;
+  final _reportExporter = AwarenessReportExportService();
+  DateTime? _analyticsDate;
+  String? _analyticsType;
 
   @override
   void initState() {
@@ -94,7 +98,10 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     _reloadDebounce = Timer(const Duration(milliseconds: 250), () {
       if (!mounted) return;
       if (_showAnalytics) {
-        setState(() => _analytics = _cmsRepository.getAnalytics());
+        final nextAnalytics = _loadAnalytics();
+        setState(() {
+          _analytics = nextAnalytics;
+        });
       }
       unawaited(_reload());
     });
@@ -116,7 +123,11 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
 
   Future<void> _reload() async {
     final nextSnapshot = _cmsRepository.getSnapshot();
-    if (mounted) setState(() => _snapshot = nextSnapshot);
+    if (mounted) {
+      setState(() {
+        _snapshot = nextSnapshot;
+      });
+    }
     await nextSnapshot;
   }
 
@@ -180,7 +191,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   Future<void> _deleteContent(AwarenessContentSummary item) async {
     final approved = await _confirm(
       'Delete ${item.type.label.toLowerCase()} permanently?',
-      '“${item.title}” and its editable content will be removed. Published content must be archived first.',
+      '“${item.title}” and its progress records will be permanently removed. This cannot be undone.',
     );
     if (!approved || !mounted) return;
     try {
@@ -201,7 +212,18 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     if (draft == null || !mounted) return;
     try {
       await _cmsRepository.savePartner(draft);
-      if (mounted) await _reload();
+      if (mounted) {
+        await _reload();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Partner saved in the partnership registry. Deploy a voucher separately to publish a reward.',
+              ),
+            ),
+          );
+        }
+      }
     } catch (error) {
       if (mounted) _showError('Partner could not be saved', error);
     }
@@ -221,13 +243,34 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     }
   }
 
-  Future<void> _editVoucher(
-    AwarenessCmsSnapshot data, [
-    AdminVoucherRecord? voucher,
-  ]) async {
-    final verified = data.partners
-        .where((partner) => partner.isVerified)
-        .toList();
+  Future<void> _deletePartner(AdminPartnerRecord partner) async {
+    final approved = await _confirm(
+      'Delete reward partner permanently?',
+      '${partner.displayName}, its vouchers, codes and related claims will be permanently removed. This cannot be undone.',
+    );
+    if (!approved || !mounted) return;
+    try {
+      await _cmsRepository.deletePartner(partner.id);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Partner could not be deleted', error);
+    }
+  }
+
+  Future<void> _editVoucher([AdminVoucherRecord? voucher]) async {
+    List<AdminPartnerRecord> verified;
+    try {
+      // Fetch at the moment the editor opens so a newly verified sponsor is
+      // never omitted by the dashboard Future's older snapshot.
+      final currentPartners = await _cmsRepository.getPartners();
+      verified = currentPartners
+          .where((partner) => partner.isVerified)
+          .toList();
+    } catch (error) {
+      if (mounted) _showError('Verified sponsors could not be loaded', error);
+      return;
+    }
+    if (!mounted) return;
     if (verified.isEmpty) {
       _showError(
         'A verified partner is required',
@@ -270,6 +313,20 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
       if (mounted) await _reload();
     } catch (error) {
       if (mounted) _showError('Voucher could not be archived', error);
+    }
+  }
+
+  Future<void> _deleteVoucher(AdminVoucherRecord voucher) async {
+    final approved = await _confirm(
+      'Delete voucher permanently?',
+      '${voucher.title}, all inventory codes and redemption records will be permanently removed. This cannot be undone.',
+    );
+    if (!approved || !mounted) return;
+    try {
+      await _cmsRepository.deleteVoucher(voucher.id);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Voucher could not be deleted', error);
     }
   }
 
@@ -354,14 +411,62 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   void _openAnalytics() {
     setState(() {
       _showAnalytics = true;
-      _analytics = _cmsRepository.getAnalytics();
+      _analytics = _loadAnalytics();
     });
   }
 
   void _closeAnalytics() => setState(() => _showAnalytics = false);
 
-  void _refreshAnalytics() =>
-      setState(() => _analytics = _cmsRepository.getAnalytics());
+  void _refreshAnalytics() {
+    final nextAnalytics = _loadAnalytics();
+    setState(() {
+      _analytics = nextAnalytics;
+    });
+  }
+
+  Future<AwarenessAnalytics> _loadAnalytics() {
+    final from = _analyticsDate == null
+        ? null
+        : DateTime(
+            _analyticsDate!.year,
+            _analyticsDate!.month,
+            _analyticsDate!.day,
+          );
+    return _cmsRepository.getAnalytics(
+      from: from,
+      to: from?.add(const Duration(days: 1)),
+      activityType: _analyticsType,
+    );
+  }
+
+  void _setAnalyticsFilters(DateTime? date, String? activityType) {
+    _analyticsDate = date;
+    _analyticsType = activityType;
+    _refreshAnalytics();
+  }
+
+  Future<void> _exportAnalytics(
+    AwarenessAnalytics data,
+    List<AwarenessActivityEvent> activities,
+  ) async {
+    try {
+      await _reportExporter.exportPdf(
+        data: data,
+        period: _analyticsDate == null
+            ? 'All dates'
+            : DateFormat('dd MMM yyyy').format(_analyticsDate!),
+        category: _analyticsType ?? 'All activity types',
+        activities: activities,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Awareness report PDF exported.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) _showError('PDF could not be exported', error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => AdminShell(
@@ -389,9 +494,13 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
         final data = snapshot.data!;
         if (_showAnalytics) {
           return _AnalyticsView(
-            future: _analytics ??= _cmsRepository.getAnalytics(),
+            future: _analytics ??= _loadAnalytics(),
             onBack: _closeAnalytics,
             onRefresh: _refreshAnalytics,
+            selectedDate: _analyticsDate,
+            activityType: _analyticsType,
+            onFiltersChanged: _setAnalyticsFilters,
+            onExport: _exportAnalytics,
           );
         }
         final items = data.contents.where((item) {
@@ -500,6 +609,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                           partner: partner,
                           onEdit: () => _editPartner(partner),
                           onArchive: () => _archivePartner(partner),
+                          onDelete: () => _deletePartner(partner),
                         ),
                       ),
                   ],
@@ -613,7 +723,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                           ),
                         ),
                         FilledButton.icon(
-                          onPressed: () => _editVoucher(data),
+                          onPressed: _editVoucher,
                           icon: const Icon(Icons.add_card_outlined),
                           label: const Text('Deploy voucher'),
                         ),
@@ -631,8 +741,9 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                       ...data.vouchers.map(
                         (voucher) => _VoucherRow(
                           voucher: voucher,
-                          onEdit: () => _editVoucher(data, voucher),
+                          onEdit: () => _editVoucher(voucher),
                           onArchive: () => _archiveVoucher(voucher),
+                          onDelete: () => _deleteVoucher(voucher),
                           onAudit: () => _showVoucherAudit(voucher),
                         ),
                       ),
@@ -693,19 +804,55 @@ class _Heading extends StatelessWidget {
   );
 }
 
-class _AnalyticsView extends StatelessWidget {
+class _AnalyticsView extends StatefulWidget {
   const _AnalyticsView({
     required this.future,
     required this.onBack,
     required this.onRefresh,
+    required this.selectedDate,
+    required this.activityType,
+    required this.onFiltersChanged,
+    required this.onExport,
   });
   final Future<AwarenessAnalytics> future;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
+  final DateTime? selectedDate;
+  final String? activityType;
+  final void Function(DateTime? date, String? activityType) onFiltersChanged;
+  final Future<void> Function(
+    AwarenessAnalytics data,
+    List<AwarenessActivityEvent> activities,
+  )
+  onExport;
+
+  @override
+  State<_AnalyticsView> createState() => _AnalyticsViewState();
+}
+
+class _AnalyticsViewState extends State<_AnalyticsView> {
+  final _userSearch = TextEditingController();
+  bool _latestFirst = true;
+
+  @override
+  void dispose() {
+    _userSearch.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: widget.selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) widget.onFiltersChanged(picked, widget.activityType);
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<AwarenessAnalytics>(
-    future: future,
+    future: widget.future,
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: CircularProgressIndicator(strokeWidth: 2));
@@ -720,7 +867,7 @@ class _AnalyticsView extends StatelessWidget {
               const Text('Performance data is unavailable.'),
               const SizedBox(height: 10),
               FilledButton(
-                onPressed: onRefresh,
+                onPressed: widget.onRefresh,
                 child: const Text('Try again'),
               ),
             ],
@@ -728,6 +875,20 @@ class _AnalyticsView extends StatelessWidget {
         );
       }
       final data = snapshot.data!;
+      final query = _userSearch.text.trim().toLowerCase();
+      final activities =
+          data.activities
+              .where(
+                (event) =>
+                    query.isEmpty ||
+                    event.userName.toLowerCase().contains(query),
+              )
+              .toList()
+            ..sort(
+              (a, b) => _latestFirst
+                  ? b.occurredAt.compareTo(a.occurredAt)
+                  : a.occurredAt.compareTo(b.occurredAt),
+            );
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -735,7 +896,7 @@ class _AnalyticsView extends StatelessWidget {
             children: [
               IconButton(
                 tooltip: 'Back to Awareness CMS',
-                onPressed: onBack,
+                onPressed: widget.onBack,
                 icon: const Icon(Icons.arrow_back),
               ),
               const SizedBox(width: 6),
@@ -760,8 +921,88 @@ class _AnalyticsView extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Refresh report',
-                onPressed: onRefresh,
+                onPressed: widget.onRefresh,
                 icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_month_outlined),
+                label: Text(
+                  widget.selectedDate == null
+                      ? 'All dates'
+                      : DateFormat('dd MMM yyyy').format(widget.selectedDate!),
+                ),
+              ),
+              if (widget.selectedDate != null)
+                IconButton(
+                  tooltip: 'Clear date',
+                  onPressed: () =>
+                      widget.onFiltersChanged(null, widget.activityType),
+                  icon: const Icon(Icons.clear),
+                ),
+              SizedBox(
+                width: 190,
+                child: DropdownButtonFormField<String?>(
+                  initialValue: widget.activityType,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Activity type'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text(
+                        'All activity types',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(value: 'Lesson', child: Text('Lessons')),
+                    DropdownMenuItem(value: 'Quiz', child: Text('Quiz')),
+                    DropdownMenuItem(
+                      value: 'Scenario',
+                      child: Text('Scenario'),
+                    ),
+                    DropdownMenuItem(value: 'Voucher', child: Text('Voucher')),
+                  ],
+                  onChanged: (value) =>
+                      widget.onFiltersChanged(widget.selectedDate, value),
+                ),
+              ),
+              SizedBox(
+                width: 230,
+                child: TextField(
+                  controller: _userSearch,
+                  decoration: const InputDecoration(
+                    labelText: 'Search user name',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              SizedBox(
+                width: 145,
+                child: DropdownButtonFormField<bool>(
+                  initialValue: _latestFirst,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Sort by'),
+                  items: const [
+                    DropdownMenuItem(value: true, child: Text('Latest')),
+                    DropdownMenuItem(value: false, child: Text('Oldest')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _latestFirst = value ?? true),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () => widget.onExport(data, activities),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Export PDF'),
               ),
             ],
           ),
@@ -802,6 +1043,12 @@ class _AnalyticsView extends StatelessWidget {
                 icon: Icons.redeem_outlined,
                 accent: AppColors.green,
               ),
+              _Metric(
+                label: 'Voucher uses',
+                value: '${data.voucherUses}',
+                icon: Icons.task_alt,
+                accent: AppColors.green,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -838,7 +1085,7 @@ class _AnalyticsView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Recent voucher redemptions',
+                  'Detailed activity audit',
                   style: TextStyle(
                     color: AppColors.navy,
                     fontSize: 15,
@@ -846,35 +1093,39 @@ class _AnalyticsView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                if (data.recentClaims.isEmpty)
+                if (activities.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: Text('No voucher redemptions yet.')),
+                    child: Center(
+                      child: Text('No activity matches these filters.'),
+                    ),
                   )
                 else
-                  for (final event in data.recentClaims)
+                  for (final event in activities)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
+                      leading: CircleAvatar(
                         backgroundColor: AppColors.greenSoft,
                         child: Icon(
-                          Icons.verified_outlined,
+                          event.activityType == 'Voucher'
+                              ? Icons.redeem_outlined
+                              : event.activityType == 'Lesson'
+                              ? Icons.menu_book_outlined
+                              : event.activityType == 'Scenario'
+                              ? Icons.alt_route
+                              : Icons.quiz_outlined,
                           color: AppColors.green,
                         ),
                       ),
-                      title: Text(
-                        '${event.userName} redeemed ${event.voucherTitle}',
-                      ),
+                      title: Text('${event.userName} · ${event.activityType}'),
                       subtitle: Text(
-                        '${event.partnerName} · ${DateFormat('dd MMM yyyy, HH:mm').format(event.claimedAt.toLocal())}',
+                        '${event.contentTitle} · ${event.category} · ${DateFormat('dd MMM yyyy, HH:mm').format(event.occurredAt.toLocal())}',
                       ),
-                      trailing: SelectableText(
-                        event.code,
-                        style: const TextStyle(
-                          color: AppColors.blue,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                      trailing: event.activityType == 'Voucher'
+                          ? _Status(
+                              status: event.voucherUsed ? 'used' : 'claimed',
+                            )
+                          : null,
                     ),
               ],
             ),
@@ -998,17 +1249,16 @@ class _ContentRow extends StatelessWidget {
             const PopupMenuItem(value: 'published', child: Text('Publish')),
             const PopupMenuItem(value: 'draft', child: Text('Move to draft')),
             const PopupMenuItem(value: 'archived', child: Text('Archive')),
-            if (!item.isPublished)
-              PopupMenuItem(
-                onTap: onDelete,
-                child: const Row(
-                  children: [
-                    Icon(Icons.delete_outline, color: AppColors.red, size: 18),
-                    SizedBox(width: 8),
-                    Text('Delete permanently'),
-                  ],
-                ),
+            PopupMenuItem(
+              onTap: onDelete,
+              child: const Row(
+                children: [
+                  Icon(Icons.delete_outline, color: AppColors.red, size: 18),
+                  SizedBox(width: 8),
+                  Text('Delete permanently'),
+                ],
               ),
+            ),
           ],
         ),
       ],
@@ -1022,11 +1272,13 @@ class _VoucherRow extends StatelessWidget {
     required this.onEdit,
     required this.onArchive,
     required this.onAudit,
+    required this.onDelete,
   });
   final AdminVoucherRecord voucher;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
   final VoidCallback onAudit;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
@@ -1047,6 +1299,8 @@ class _VoucherRow extends StatelessWidget {
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _Status(status: voucher.status),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -1081,6 +1335,11 @@ class _VoucherRow extends StatelessWidget {
           onPressed: onArchive,
           icon: const Icon(Icons.archive_outlined, color: AppColors.slate),
         ),
+        IconButton(
+          tooltip: 'Delete voucher permanently',
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_forever_outlined, color: AppColors.red),
+        ),
       ],
     ),
   );
@@ -1091,14 +1350,66 @@ class _PartnerRow extends StatelessWidget {
     required this.partner,
     required this.onEdit,
     required this.onArchive,
+    required this.onDelete,
   });
   final AdminPartnerRecord partner;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final verified = partner.isVerified;
+    final verified = partner.verificationStatus == 'verified';
+    final identity = Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: verified ? AppColors.greenSoft : AppColors.amberSoft,
+          child: Icon(
+            verified ? Icons.verified_outlined : Icons.fact_check_outlined,
+            color: verified ? AppColors.green : AppColors.amber,
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${partner.partnerCode} · ${partner.displayName}',
+                style: const TextStyle(
+                  color: AppColors.navy,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                '${partner.legalName} · ${partner.registrationNumber ?? 'Registration pending'} · ${partner.category}',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.slate, fontSize: 9),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    final actions = <Widget>[
+      _Status(status: partner.verificationStatus),
+      IconButton(
+        tooltip: 'Review, view evidence, or edit',
+        onPressed: onEdit,
+        icon: const Icon(Icons.manage_search_outlined, color: AppColors.blue),
+      ),
+      if (partner.isActive)
+        IconButton(
+          tooltip: 'Suspend partner',
+          onPressed: onArchive,
+          icon: const Icon(Icons.block_outlined, color: AppColors.red),
+        ),
+      IconButton(
+        tooltip: 'Delete partner permanently',
+        onPressed: onDelete,
+        icon: const Icon(Icons.delete_forever_outlined, color: AppColors.red),
+      ),
+    ];
     return Container(
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(12),
@@ -1107,52 +1418,29 @@ class _PartnerRow extends StatelessWidget {
         border: Border.all(color: AppColors.line),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: verified
-                ? AppColors.greenSoft
-                : AppColors.amberSoft,
-            child: Icon(
-              verified ? Icons.verified_outlined : Icons.fact_check_outlined,
-              color: verified ? AppColors.green : AppColors.amber,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 620) {
+            return Row(
               children: [
-                Text(
-                  '${partner.partnerCode} · ${partner.displayName}',
-                  style: const TextStyle(
-                    color: AppColors.navy,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  '${partner.legalName} · ${partner.registrationNumber ?? 'Registration pending'} · ${partner.category}',
-                  style: const TextStyle(color: AppColors.slate, fontSize: 9),
-                ),
+                Expanded(child: identity),
+                ...actions,
               ],
-            ),
-          ),
-          _Status(status: partner.verificationStatus),
-          IconButton(
-            tooltip: 'Review or edit',
-            onPressed: onEdit,
-            icon: const Icon(
-              Icons.manage_search_outlined,
-              color: AppColors.blue,
-            ),
-          ),
-          if (partner.isActive)
-            IconButton(
-              tooltip: 'Suspend partner',
-              onPressed: onArchive,
-              icon: const Icon(Icons.block_outlined, color: AppColors.red),
-            ),
-        ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              identity,
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: actions,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

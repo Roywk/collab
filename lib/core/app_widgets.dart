@@ -450,16 +450,20 @@ class VisitBottomNavigation extends StatelessWidget {
                               : AppColors.slate,
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          items[index].$2,
-                          style: TextStyle(
-                            color: index == currentIndex
-                                ? AppColors.blue
-                                : AppColors.slate,
-                            fontSize: 9,
-                            fontWeight: index == currentIndex
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            items[index].$2,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: index == currentIndex
+                                  ? AppColors.blue
+                                  : AppColors.slate,
+                              fontSize: 9,
+                              fontWeight: index == currentIndex
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],

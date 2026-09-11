@@ -127,8 +127,11 @@ class AwarenessAnalytics {
     required this.quizPasses,
     required this.xpAwarded,
     required this.voucherClaims,
+    required this.voucherUses,
     required this.activeLearners,
     required this.recentClaims,
+    this.categories = const [],
+    this.activities = const [],
   });
 
   final int lessonCompletions;
@@ -137,10 +140,32 @@ class AwarenessAnalytics {
   final int quizPasses;
   final int xpAwarded;
   final int voucherClaims;
+  final int voucherUses;
   final int activeLearners;
   final List<AwarenessClaimEvent> recentClaims;
+  final List<String> categories;
+  final List<AwarenessActivityEvent> activities;
 
   double get quizPassRate => quizAttempts == 0 ? 0 : quizPasses / quizAttempts;
+}
+
+class AwarenessActivityEvent {
+  const AwarenessActivityEvent({
+    required this.userName,
+    required this.activityType,
+    required this.contentTitle,
+    required this.category,
+    required this.occurredAt,
+    this.voucherCode,
+    this.voucherUsed = false,
+  });
+  final String userName;
+  final String activityType;
+  final String contentTitle;
+  final String category;
+  final DateTime occurredAt;
+  final String? voucherCode;
+  final bool voucherUsed;
 }
 
 class AwarenessClaimEvent {

@@ -112,7 +112,7 @@ class AwarenessAdminRepository {
     }
   }
 
-  Future<void> savePartner(AdminPartnerDraft draft) async {
+  Future<String> savePartner(AdminPartnerDraft draft) async {
     final data = {
       'legal_name': draft.legalName.trim(),
       'display_name': draft.displayName.trim(),
@@ -125,7 +125,9 @@ class AwarenessAdminRepository {
           ? 'pending'
           : draft.verificationStatus,
       'verification_notes': _nullable(draft.verificationNotes),
-      'is_active': draft.isActive,
+      'is_active': draft.verificationStatus == 'verified'
+          ? true
+          : draft.isActive,
       'updated_at': DateTime.now().toIso8601String(),
     };
     String partnerId;
@@ -159,6 +161,15 @@ class AwarenessAdminRepository {
         .from('reward_partners')
         .update({...data, 'verification_status': draft.verificationStatus})
         .eq('id', partnerId);
+    final persisted = await client
+        .from('reward_partners')
+        .select('id')
+        .eq('id', partnerId)
+        .maybeSingle();
+    if (persisted == null) {
+      throw StateError('The partner could not be verified after saving.');
+    }
+    return partnerId;
   }
 
   Future<void> archivePartner(String id) async {
@@ -170,6 +181,13 @@ class AwarenessAdminRepository {
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', id);
+  }
+
+  Future<void> deletePartner(String id) async {
+    await client.rpc(
+      'admin_delete_reward_partner',
+      params: {'target_partner_id': id},
+    );
   }
 
   Future<AdminVoucherDraft> getVoucher(String id) async {
@@ -430,9 +448,6 @@ class AwarenessAdminRepository {
       setContentStatus(item, 'archived');
 
   Future<void> deleteContent(AwarenessContentSummary item) async {
-    if (item.status == 'published') {
-      throw StateError('Published content must be archived before deletion.');
-    }
     final table = switch (item.type) {
       AwarenessContentType.lesson => 'learning_lessons',
       AwarenessContentType.quiz => 'quiz_sets',
@@ -514,6 +529,13 @@ class AwarenessAdminRepository {
 
   Future<void> archiveVoucher(String id) => setVoucherStatus(id, 'archived');
 
+  Future<void> deleteVoucher(String id) async {
+    await client.rpc(
+      'admin_delete_reward_voucher',
+      params: {'target_voucher_id': id},
+    );
+  }
+
   Future<String> uploadAwarenessMedia({
     required Uint8List bytes,
     required String fileName,
@@ -538,8 +560,19 @@ class AwarenessAdminRepository {
     return client.storage.from(bucket).getPublicUrl(path);
   }
 
-  Future<AwarenessAnalytics> getAnalytics() async {
-    final raw = await client.rpc('admin_awareness_analytics');
+  Future<AwarenessAnalytics> getAnalytics({
+    DateTime? from,
+    DateTime? to,
+    String? activityType,
+  }) async {
+    final raw = await client.rpc(
+      'admin_awareness_analytics',
+      params: {
+        'filter_from': from?.toUtc().toIso8601String(),
+        'filter_to': to?.toUtc().toIso8601String(),
+        'filter_activity_type': activityType,
+      },
+    );
     final data = Map<String, dynamic>.from(raw as Map);
     int count(String key) => (data[key] as num?)?.toInt() ?? 0;
     return AwarenessAnalytics(
@@ -549,6 +582,7 @@ class AwarenessAdminRepository {
       quizPasses: count('quiz_passes'),
       xpAwarded: count('xp_awarded'),
       voucherClaims: count('voucher_claims'),
+      voucherUses: count('voucher_uses'),
       activeLearners: count('active_learners'),
       recentClaims: ((data['recent_claims'] as List?) ?? const [])
           .map(
@@ -560,6 +594,24 @@ class AwarenessAdminRepository {
               claimedAt:
                   DateTime.tryParse(row['claimed_at']?.toString() ?? '') ??
                   DateTime.now(),
+            ),
+          )
+          .toList(),
+      categories: ((data['categories'] as List?) ?? const [])
+          .map<String>((value) => value.toString())
+          .toList(),
+      activities: ((data['activities'] as List?) ?? const [])
+          .map(
+            (row) => AwarenessActivityEvent(
+              userName: row['display_name'] ?? 'Traveller',
+              activityType: row['activity_type'] ?? 'Activity',
+              contentTitle: row['content_title'] ?? 'Untitled',
+              category: row['category'] ?? 'General',
+              occurredAt:
+                  DateTime.tryParse(row['occurred_at']?.toString() ?? '') ??
+                  DateTime.now(),
+              voucherCode: row['voucher_code'],
+              voucherUsed: row['voucher_used'] == true,
             ),
           )
           .toList(),

@@ -17,6 +17,7 @@ class LessonsScreen extends StatefulWidget {
 class _LessonsScreenState extends State<LessonsScreen> {
   late Future<List<LearningLesson>> lessons;
   String selectedFilter = 'All';
+  String selectedDifficulty = 'All difficulties';
 
   @override
   void initState() {
@@ -71,6 +72,32 @@ class _LessonsScreenState extends State<LessonsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedDifficulty,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Difficulty',
+                    prefixIcon: Icon(Icons.signal_cellular_alt),
+                  ),
+                  items:
+                      const [
+                            'All difficulties',
+                            'Beginner',
+                            'Intermediate',
+                            'Advanced',
+                          ]
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) => setState(
+                    () => selectedDifficulty = value ?? 'All difficulties',
+                  ),
+                ),
               ],
             ),
           ),
@@ -91,6 +118,10 @@ class _LessonsScreenState extends State<LessonsScreen> {
 
                 // 3. Implemented Filtering logic
                 final filteredItems = allItems.where((lesson) {
+                  if (selectedDifficulty != 'All difficulties' &&
+                      lesson.difficulty != selectedDifficulty) {
+                    return false;
+                  }
                   if (selectedFilter == 'Location-Based') {
                     return lesson.isLocationBased;
                   }

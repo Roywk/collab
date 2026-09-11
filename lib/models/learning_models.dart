@@ -149,6 +149,7 @@ class RewardVoucher {
   final int requiredXp;
   final bool isUnlocked;
   final bool isClaimed;
+  final bool isUsed;
   final int availableCodes;
 
   RewardVoucher({
@@ -163,6 +164,7 @@ class RewardVoucher {
     required this.requiredXp,
     this.isUnlocked = false,
     this.isClaimed = false,
+    this.isUsed = false,
     this.availableCodes = 0,
   });
 

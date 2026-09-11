@@ -159,9 +159,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   void _openScamReportHistory() {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const ScamReportHistoryScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const ScamReportHistoryScreen()),
     );
   }
 
@@ -267,6 +265,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       DropdownButtonFormField<String>(
                         key: ValueKey('profile-language-$_language'),
                         initialValue: _language,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.translate_outlined),
                         ),
@@ -309,6 +308,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             initialValue: selectedIsAvailable
                                 ? _selectedBankId
                                 : null,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.account_balance_outlined),
                             ),
@@ -316,7 +316,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 .map(
                                   (bank) => DropdownMenuItem(
                                     value: bank.id,
-                                    child: Text(bank.name),
+                                    child: Text(
+                                      bank.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 )
                                 .toList(growable: false),
@@ -635,6 +639,8 @@ class _ProfileHeader extends StatelessWidget {
               children: [
                 Text(
                   profile.fullName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.navy,
                     fontSize: 17,
@@ -644,6 +650,8 @@ class _ProfileHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   profile.email,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.slate, fontSize: 10),
                 ),
                 const SizedBox(height: 7),
@@ -720,12 +728,18 @@ class _AccountRow extends StatelessWidget {
               style: const TextStyle(color: AppColors.slate, fontSize: 11),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.navy,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

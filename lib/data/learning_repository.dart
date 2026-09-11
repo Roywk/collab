@@ -34,12 +34,14 @@ class LearningRepository {
         .eq('user_id', userId)
         .count(CountOption.exact);
 
+    final totalXp = (profileData['total_xp'] as num?)?.toInt() ?? 0;
+    final calculatedLevel = (totalXp ~/ 200).clamp(0, 50);
     return UserLearningProfile(
       userId: userId,
-      totalXp: profileData['total_xp'] ?? 0,
-      currentLevel: profileData['current_level'] ?? 0,
+      totalXp: totalXp,
+      currentLevel: calculatedLevel,
       vouchersCount: vouchersResponse.count,
-      rankTitle: _getRankTitle(profileData['current_level'] ?? 0),
+      rankTitle: _getRankTitle(calculatedLevel),
       availableXp: profileData['available_xp'] ?? profileData['total_xp'] ?? 0,
     );
   }
@@ -275,7 +277,7 @@ class LearningRepository {
 
     final response = await client
         .from('reward_vouchers')
-        .select('*, user_claimed_vouchers(user_id, full_promo_code)')
+        .select('*, user_claimed_vouchers(user_id, full_promo_code, used_at)')
         .eq('is_active', true);
 
     final inventoryByVoucher = <String, int>{};
@@ -312,6 +314,7 @@ class LearningRepository {
         requiredXp: requiredXp,
         isUnlocked: profile != null && profile.spendableXp >= requiredXp,
         isClaimed: isClaimed,
+        isUsed: isClaimed && ownClaims.first['used_at'] != null,
         promoCode: fullCode,
         availableCodes: inventoryByVoucher[v['id'].toString()] ?? 0,
       );
@@ -328,6 +331,14 @@ class LearningRepository {
     );
     if (result is String) return result;
     return result.toString();
+  }
+
+  Future<Map<String, dynamic>> useVoucherCode(String code) async {
+    final result = await client.rpc(
+      'use_claimed_voucher',
+      params: {'target_code': code.trim()},
+    );
+    return Map<String, dynamic>.from(result as Map);
   }
 
   Future<LearningOverview> getOverview() async {

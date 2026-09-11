@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_theme.dart';
 import '../../data/user_account_repository.dart';
 import '../../models/user_profile.dart';
+import 'forgot_password_help_screen.dart';
 
 class MobileLoginScreen extends StatefulWidget {
   const MobileLoginScreen({required this.repository, super.key});
@@ -104,47 +105,9 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
     }
   }
 
-  Future<void> _forgotPassword() async {
-    final controller = TextEditingController(text: _emailController.text);
-    final email = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset password'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.emailAddress,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Email address'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Send Reset Link'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (email == null || email.isEmpty || !mounted) return;
-
-    try {
-      await widget.repository.sendPasswordReset(email);
-      if (!mounted) return;
-      setState(() {
-        _message = 'Password reset instructions were sent to $email.';
-        _error = null;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error is AuthException ? error.message : error.toString();
-      });
-    }
-  }
+  Future<void> _forgotPassword() => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const ForgotPasswordHelpScreen()),
+  );
 
   Future<void> _openAdminLogin() async {
     await Navigator.of(context).pushNamed('/admin');
@@ -162,317 +125,323 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
-              child: Column(
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: AppColors.blue,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x241E40AF),
-                          blurRadius: 18,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.verified_user_outlined,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(height: 13),
-                  const Text(
-                    'Visit 1MY',
-                    style: TextStyle(
-                      color: AppColors.blue,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _registering
-                        ? 'Create your secure tourist account'
-                        : 'Sign in to continue your safer journey',
-                    style: const TextStyle(
-                      color: AppColors.slate,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.line),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            _registering ? 'Create Account' : 'Welcome Back',
-                            style: const TextStyle(
-                              color: AppColors.navy,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _registering
-                                ? 'Enter your details to register.'
-                                : 'Enter your account details to sign in.',
-                            style: const TextStyle(
-                              color: AppColors.slate,
-                              fontSize: 10,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          if (_registering) ...[
-                            TextFormField(
-                              controller: _fullNameController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Full name',
-                                prefixIcon: Icon(Icons.person_outline),
-                              ),
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 11),
-                          ],
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email address',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                            validator: (value) {
-                              final email = value?.trim() ?? '';
-                              if (!RegExp(
-                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                              ).hasMatch(email)) {
-                                return 'Enter a valid email address.';
-                              }
-                              return null;
-                            },
-                          ),
-                          if (_registering) ...[
-                            const SizedBox(height: 11),
-                            TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Phone number',
-                                hintText: '+60123456789',
-                                prefixIcon: Icon(Icons.phone_outlined),
-                              ),
-                            ),
-                            const SizedBox(height: 11),
-                            TextFormField(
-                              controller: _nationalityController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Nationality',
-                                prefixIcon: Icon(Icons.public_outlined),
-                              ),
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 11),
-                            FutureBuilder<List<BankChoice>>(
-                              future: _banksFuture,
-                              builder: (context, snapshot) {
-                                final banks =
-                                    snapshot.data ?? const <BankChoice>[];
-                                return _BankMultiSelectField(
-                                  banks: banks,
-                                  selectedIds: _selectedBankIds,
-                                  loading:
-                                      snapshot.connectionState ==
-                                      ConnectionState.waiting,
-                                  loadError: snapshot.hasError
-                                      ? 'Banks could not be loaded.'
-                                      : null,
-                                  onChanged: (ids) {
-                                    setState(() {
-                                      _selectedBankIds
-                                        ..clear()
-                                        ..addAll(ids);
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 17),
-                            const Text(
-                              'PRIMARY EMERGENCY CONTACT',
-                              style: TextStyle(
-                                color: AppColors.slate,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _contactNameController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Contact name',
-                                prefixIcon: Icon(
-                                  Icons.contact_emergency_outlined,
-                                ),
-                              ),
-                              validator: _required,
-                            ),
-                            const SizedBox(height: 11),
-                            TextFormField(
-                              controller: _contactPhoneController,
-                              keyboardType: TextInputType.phone,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Contact phone (international)',
-                                hintText: '+60123456789',
-                                prefixIcon: Icon(Icons.phone_outlined),
-                              ),
-                              validator: _validateE164Phone,
-                            ),
-                            const SizedBox(height: 11),
-                            TextFormField(
-                              controller: _contactRelationshipController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Relationship',
-                                prefixIcon: Icon(Icons.people_outline),
-                              ),
-                              validator: _required,
-                            ),
-                          ],
-                          const SizedBox(height: 11),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _hidePassword,
-                            textInputAction: _registering
-                                ? TextInputAction.next
-                                : TextInputAction.done,
-                            onFieldSubmitted: (_) {
-                              if (!_registering) _submit();
-                            },
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                onPressed: () => setState(
-                                  () => _hidePassword = !_hidePassword,
-                                ),
-                                icon: Icon(
-                                  _hidePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                              ),
-                            ),
-                            validator: (value) {
-                              if ((value ?? '').length < 8) {
-                                return 'Password must contain at least 8 characters.';
-                              }
-                              return null;
-                            },
-                          ),
-                          if (_registering) ...[
-                            const SizedBox(height: 11),
-                            TextFormField(
-                              controller: _confirmPasswordController,
-                              obscureText: _hidePassword,
-                              textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) => _submit(),
-                              decoration: const InputDecoration(
-                                labelText: 'Confirm password',
-                                prefixIcon: Icon(Icons.lock_outline),
-                              ),
-                              validator: (value) =>
-                                  value != _passwordController.text
-                                  ? 'Passwords do not match.'
-                                  : null,
-                            ),
-                          ],
-                          if (!_registering)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: _loading ? null : _forgotPassword,
-                                child: const Text('Forgot password?'),
-                              ),
-                            )
-                          else
-                            const SizedBox(height: 16),
-                          if (_error != null) _LoginMessage.error(_error!),
-                          if (_message != null)
-                            _LoginMessage.success(_message!),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 48,
-                            child: FilledButton(
-                              onPressed: _loading ? null : _submit,
-                              child: _loading
-                                  ? const SizedBox(
-                                      width: 19,
-                                      height: 19,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Text(
-                                      _registering
-                                          ? 'Create Account'
-                                          : 'Sign In',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextButton(
-                            onPressed: _loading ? null : _switchMode,
-                            child: Text(
-                              _registering
-                                  ? 'Already have an account? Sign In'
-                                  : 'New to Visit 1MY? Create Account',
-                            ),
+    return PopScope(
+      canPop: !_registering,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _registering) _switchMode();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.canvas,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: AppColors.blue,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x241E40AF),
+                            blurRadius: 18,
+                            offset: Offset(0, 8),
                           ),
                         ],
                       ),
+                      child: const Icon(
+                        Icons.verified_user_outlined,
+                        color: Colors.white,
+                        size: 30,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextButton.icon(
-                    onPressed: _loading ? null : _openAdminLogin,
-                    icon: const Icon(
-                      Icons.admin_panel_settings_outlined,
-                      size: 17,
+                    const SizedBox(height: 13),
+                    const Text(
+                      'Visit 1MY',
+                      style: TextStyle(
+                        color: AppColors.blue,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                    label: const Text('Administrator Login'),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _registering
+                          ? 'Create your secure tourist account'
+                          : 'Sign in to continue your safer journey',
+                      style: const TextStyle(
+                        color: AppColors.slate,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: AppColors.line),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              _registering ? 'Create Account' : 'Welcome Back',
+                              style: const TextStyle(
+                                color: AppColors.navy,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _registering
+                                  ? 'Enter your details to register.'
+                                  : 'Enter your account details to sign in.',
+                              style: const TextStyle(
+                                color: AppColors.slate,
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            if (_registering) ...[
+                              TextFormField(
+                                controller: _fullNameController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Full name',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 11),
+                            ],
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Email address',
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                              validator: (value) {
+                                final email = value?.trim() ?? '';
+                                if (!RegExp(
+                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                ).hasMatch(email)) {
+                                  return 'Enter a valid email address.';
+                                }
+                                return null;
+                              },
+                            ),
+                            if (_registering) ...[
+                              const SizedBox(height: 11),
+                              TextFormField(
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Phone number',
+                                  hintText: '+60123456789',
+                                  prefixIcon: Icon(Icons.phone_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 11),
+                              TextFormField(
+                                controller: _nationalityController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nationality',
+                                  prefixIcon: Icon(Icons.public_outlined),
+                                ),
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 11),
+                              FutureBuilder<List<BankChoice>>(
+                                future: _banksFuture,
+                                builder: (context, snapshot) {
+                                  final banks =
+                                      snapshot.data ?? const <BankChoice>[];
+                                  return _BankMultiSelectField(
+                                    banks: banks,
+                                    selectedIds: _selectedBankIds,
+                                    loading:
+                                        snapshot.connectionState ==
+                                        ConnectionState.waiting,
+                                    loadError: snapshot.hasError
+                                        ? 'Banks could not be loaded.'
+                                        : null,
+                                    onChanged: (ids) {
+                                      setState(() {
+                                        _selectedBankIds
+                                          ..clear()
+                                          ..addAll(ids);
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 17),
+                              const Text(
+                                'PRIMARY EMERGENCY CONTACT',
+                                style: TextStyle(
+                                  color: AppColors.slate,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _contactNameController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Contact name',
+                                  prefixIcon: Icon(
+                                    Icons.contact_emergency_outlined,
+                                  ),
+                                ),
+                                validator: _required,
+                              ),
+                              const SizedBox(height: 11),
+                              TextFormField(
+                                controller: _contactPhoneController,
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Contact phone (international)',
+                                  hintText: '+60123456789',
+                                  prefixIcon: Icon(Icons.phone_outlined),
+                                ),
+                                validator: _validateE164Phone,
+                              ),
+                              const SizedBox(height: 11),
+                              TextFormField(
+                                controller: _contactRelationshipController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Relationship',
+                                  prefixIcon: Icon(Icons.people_outline),
+                                ),
+                                validator: _required,
+                              ),
+                            ],
+                            const SizedBox(height: 11),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _hidePassword,
+                              textInputAction: _registering
+                                  ? TextInputAction.next
+                                  : TextInputAction.done,
+                              onFieldSubmitted: (_) {
+                                if (!_registering) _submit();
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => _hidePassword = !_hidePassword,
+                                  ),
+                                  icon: Icon(
+                                    _hidePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if ((value ?? '').length < 8) {
+                                  return 'Password must contain at least 8 characters.';
+                                }
+                                return null;
+                              },
+                            ),
+                            if (_registering) ...[
+                              const SizedBox(height: 11),
+                              TextFormField(
+                                controller: _confirmPasswordController,
+                                obscureText: _hidePassword,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _submit(),
+                                decoration: const InputDecoration(
+                                  labelText: 'Confirm password',
+                                  prefixIcon: Icon(Icons.lock_outline),
+                                ),
+                                validator: (value) =>
+                                    value != _passwordController.text
+                                    ? 'Passwords do not match.'
+                                    : null,
+                              ),
+                            ],
+                            if (!_registering)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _loading ? null : _forgotPassword,
+                                  child: const Text('Forgot password?'),
+                                ),
+                              )
+                            else
+                              const SizedBox(height: 16),
+                            if (_error != null) _LoginMessage.error(_error!),
+                            if (_message != null)
+                              _LoginMessage.success(_message!),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 48,
+                              child: FilledButton(
+                                onPressed: _loading ? null : _submit,
+                                child: _loading
+                                    ? const SizedBox(
+                                        width: 19,
+                                        height: 19,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        _registering
+                                            ? 'Create Account'
+                                            : 'Sign In',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextButton(
+                              onPressed: _loading ? null : _switchMode,
+                              child: Text(
+                                _registering
+                                    ? 'Already have an account? Sign In'
+                                    : 'New to Visit 1MY? Create Account',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextButton.icon(
+                      onPressed: _loading ? null : _openAdminLogin,
+                      icon: const Icon(
+                        Icons.admin_panel_settings_outlined,
+                        size: 17,
+                      ),
+                      label: const Text('Administrator Login'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

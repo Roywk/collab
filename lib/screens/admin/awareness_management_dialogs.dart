@@ -31,6 +31,45 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
   late String _category;
   late String _status;
   late final List<String> _evidenceUrls;
+
+  void _previewEvidence(String url, int index) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Partnership evidence ${index + 1}'),
+                trailing: IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+              Flexible(
+                child: InteractiveViewer(
+                  minScale: .5,
+                  maxScale: 5,
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Text('This evidence image could not be loaded.'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   bool _uploadingEvidence = false;
 
   @override
@@ -93,7 +132,11 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
         verificationStatus: _status,
         verificationNotes: _notes.text.trim(),
         evidenceUrls: _evidenceUrls,
-        isActive: widget.partner?.isActive ?? true,
+        // A verified partnership is deployable. Re-verifying a previously
+        // suspended record must reactivate it as part of the same save.
+        isActive: _status == 'verified'
+            ? true
+            : widget.partner?.isActive ?? true,
       ),
     );
   }
@@ -301,12 +344,22 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
                             index < _evidenceUrls.length;
                             index++
                           )
-                            Chip(
-                              avatar: const Icon(
-                                Icons.verified_outlined,
-                                size: 16,
+                            InputChip(
+                              avatar: ClipOval(
+                                child: Image.network(
+                                  _evidenceUrls[index],
+                                  width: 22,
+                                  height: 22,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 16,
+                                  ),
+                                ),
                               ),
                               label: Text('Evidence ${index + 1}'),
+                              onPressed: () =>
+                                  _previewEvidence(_evidenceUrls[index], index),
                               onDeleted: () =>
                                   setState(() => _evidenceUrls.removeAt(index)),
                             ),
