@@ -14,18 +14,26 @@ class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({
     required this.repository,
     required this.onSignOut,
+    this.initialSection = 'Dashboard Overview',
     super.key,
   });
 
   final AdminRepository repository;
   final Future<void> Function() onSignOut;
+  final String initialSection;
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  String _selectedSection = 'Dashboard Overview';
+  late String _selectedSection;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSection = widget.initialSection;
+  }
 
   void _onSectionChanged(String section) {
     setState(() {
