@@ -166,7 +166,10 @@ class AdminRepository {
         .select()
         .order('created_at', ascending: false);
 
-    return (response as List).map((json) => _mapScamReport(json)).toList();
+    final rows = (response as List?) ?? const [];
+    return rows
+        .map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<void> updateReportStatus({
@@ -208,47 +211,149 @@ class AdminRepository {
     }
 
     final response = await query.limit(5);
-    return (response as List).map((json) => _mapScamReport(json)).toList();
+    final rows = (response as List?) ?? const [];
+    return rows
+        .map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map)))
+        .toList();
   }
 
   Future<Map<String, dynamic>> getModerationStats() async {
-    // This would ideally be a RPC call or multiple aggregations
-    // For now, return some mocked data or implement basic counts
     final reportsResponse = await client
         .from('scam_reports')
-        .select('verification_status');
-    final reports = reportsResponse as List;
+        .select('verification_status, is_official, reported_at, created_at');
+    final reports = (reportsResponse as List?) ?? const [];
 
     final total = reports.length;
     final pending = reports
         .where((r) => r['verification_status'] == 'Pending')
         .length;
+    final verified = reports
+        .where((r) => r['verification_status'] == 'Verified')
+        .length;
+    final official = reports.where((r) => r['is_official'] == true).length;
+    final now = DateTime.now();
+    final dailyCounts = List<int>.filled(7, 0);
+    for (final report in reports) {
+      final createdAt = DateTime.tryParse(
+        report['created_at']?.toString() ?? '',
+      );
+      if (createdAt == null) continue;
+      final dayDifference = DateTime(now.year, now.month, now.day)
+          .difference(DateTime(createdAt.year, createdAt.month, createdAt.day))
+          .inDays;
+      if (dayDifference >= 0 && dayDifference < 7) {
+        dailyCounts[6 - dayDifference]++;
+      }
+    }
+
+    List<Map<String, dynamic>> notifications = const [];
+    try {
+      final notificationResponse = await client
+          .from('traveller_notifications')
+          .select('id, title, message, severity, published_at')
+          .eq('is_active', true)
+          .order('published_at', ascending: false)
+          .limit(20);
+      notifications = (notificationResponse as List)
+          .map((row) => Map<String, dynamic>.from(row as Map))
+          .toList();
+    } catch (_) {
+      // The dashboard remains usable before the notification migration is run.
+    }
 
     return {
       'total_reports': total,
       'pending_review': pending,
-      'accuracy_rate': 94.2, // Mocked or calculated
-      'community_reach': '12.4k', // Mocked or calculated
+      'verified_reports': verified,
+      'official_cases': official,
+      'daily_counts': dailyCounts,
+      'report_dates': reports
+          .map(
+            (report) =>
+                report['reported_at']?.toString() ??
+                report['created_at']?.toString(),
+          )
+          .whereType<String>()
+          .toList(),
+      'recent_notifications': notifications,
     };
   }
 
+  Future<void> publishTravellerNotification({
+    required String title,
+    required String message,
+    required String severity,
+  }) async {
+    await client.from('traveller_notifications').insert({
+      'title': title.trim(),
+      'message': message.trim(),
+      'severity': severity,
+      'published_by': client.auth.currentUser?.id,
+      'is_active': true,
+    });
+  }
+
+  Future<void> updateTravellerNotification({
+    required String id,
+    required String title,
+    required String message,
+    required String severity,
+  }) async {
+    await client
+        .from('traveller_notifications')
+        .update({
+          'title': title.trim(),
+          'message': message.trim(),
+          'severity': severity,
+        })
+        .eq('id', id);
+  }
+
+  Future<void> removeTravellerNotification(String id) async {
+    await client
+        .from('traveller_notifications')
+        .update({'is_active': false})
+        .eq('id', id);
+  }
+
   ScamReport _mapScamReport(Map<String, dynamic> json) {
+    double numberOrZero(Object? value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    double? nullableNumber(Object? value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString());
+    }
+
+    DateTime dateOrNow(Object? value) {
+      return DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
+    }
+
+    final evidenceValue = json['evidence_urls'];
     return ScamReport(
       id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: numberOrZero(json['latitude']),
+      longitude: numberOrZero(json['longitude']),
       locationName: json['location_name']?.toString(),
-      amountLost: (json['amount_lost'] as num?)?.toDouble(),
-      evidenceUrls: List<String>.from(json['evidence_urls'] ?? []),
+      amountLost: nullableNumber(json['amount_lost']),
+      evidenceUrls: evidenceValue is List
+          ? evidenceValue
+                .map((value) => value?.toString() ?? '')
+                .where((value) => value.isNotEmpty)
+                .toList()
+          : const [],
       verificationStatus: json['verification_status']?.toString() ?? 'Pending',
-      isAnonymous: json['is_anonymous'] ?? false,
+      isAnonymous: json['is_anonymous'] == true,
       adminNotes: json['admin_notes']?.toString(),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: dateOrNow(json['created_at']),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
     );
   }

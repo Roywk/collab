@@ -2,6 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 
+class AdminNavigationScope extends InheritedWidget {
+  const AdminNavigationScope({
+    required this.onNavigate,
+    required super.child,
+    super.key,
+  });
+
+  final ValueChanged<String> onNavigate;
+
+  static AdminNavigationScope? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AdminNavigationScope>();
+  }
+
+  @override
+  bool updateShouldNotify(AdminNavigationScope oldWidget) {
+    return onNavigate != oldWidget.onNavigate;
+  }
+}
+
 class AdminShell extends StatelessWidget {
   const AdminShell({
     required this.child,
@@ -260,12 +279,23 @@ class AdminSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fallbackNavigation = AdminNavigationScope.maybeOf(
+      context,
+    )?.onNavigate;
+
+    void openSection(VoidCallback? callback, String section) {
+      if (fallbackNavigation != null) {
+        fallbackNavigation(section);
+      } else {
+        callback?.call();
+      }
+    }
+
     const menuItems = [
       (Icons.dashboard_outlined, 'Dashboard Overview'),
-      (Icons.fact_check_outlined, 'Scam Report Moderation'),
+      (Icons.add_location_alt_outlined, 'Publish Official Cases'),
       (Icons.report_gmailerrorred_outlined, 'Reports Moderation'),
       (Icons.shield_outlined, 'Threat Database'),
-      (Icons.flag_outlined, 'Scam Moderation'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
       (Icons.verified_outlined, 'Verified Merchants'),
       (Icons.phone_outlined, 'Bank Hotline Mgmt'),
@@ -336,28 +366,28 @@ class AdminSidebar extends StatelessWidget {
                         onTap: () {
                           switch (item.$2) {
                             case 'Dashboard Overview':
-                              onOpenDashboard?.call();
+                              openSection(onOpenDashboard, item.$2);
                               break;
                             case 'Reports Moderation':
-                              onOpenReports?.call();
+                              openSection(onOpenReports, item.$2);
                               break;
-                            case 'Scam Report Moderation':
-                              onOpenPublishScamCase?.call();
+                            case 'Publish Official Cases':
+                              openSection(onOpenPublishScamCase, item.$2);
                               break;
                             case 'Threat Database':
-                              onOpenThreatDatabase?.call();
+                              openSection(onOpenThreatDatabase, item.$2);
                               break;
                             case 'Geospatial Heatmap':
-                              onOpenHeatmap?.call();
+                              openSection(onOpenHeatmap, item.$2);
                               break;
                             case 'Verified Merchants':
-                              onOpenVerifiedMerchants?.call();
+                              openSection(onOpenVerifiedMerchants, item.$2);
                               break;
                             case 'Bank Hotline Mgmt':
-                              onOpenBankHotlines?.call();
+                              openSection(onOpenBankHotlines, item.$2);
                               break;
                             case 'Emergency Facilities':
-                              onOpenEmergencyFacilities?.call();
+                              openSection(onOpenEmergencyFacilities, item.$2);
                               break;
                             case 'Awareness CMS':
                               if (onOpenAwareness != null) {
@@ -365,13 +395,11 @@ class AdminSidebar extends StatelessWidget {
                               } else if (onOpenAwarenessCms != null) {
                                 onOpenAwarenessCms!.call();
                               } else {
-                                Navigator.of(
-                                  context,
-                                ).pushNamed('/admin/awareness');
+                                openSection(null, item.$2);
                               }
                               break;
                             case 'System Logs & Settings':
-                              onOpenSettings?.call();
+                              openSection(onOpenSettings, item.$2);
                               break;
                           }
                         },

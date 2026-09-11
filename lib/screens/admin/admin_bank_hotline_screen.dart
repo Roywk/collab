@@ -50,7 +50,6 @@ class _AdminBankHotlineScreenState extends State<AdminBankHotlineScreen> {
 
   void _openEmergencyFacilities() {
     if (widget.onOpenEmergencyFacilities == null) return;
-    Navigator.of(context).pop();
     widget.onOpenEmergencyFacilities!();
   }
 
@@ -131,7 +130,6 @@ class _AdminBankHotlineScreenState extends State<AdminBankHotlineScreen> {
       selectedMenuItem: 'Bank Hotline Mgmt',
       headerTitle: 'Bank Hotline Management',
       showTopBar: false,
-      onOpenThreatDatabase: () => Navigator.of(context).pop(),
       onOpenBankHotlines: () {},
       onOpenEmergencyFacilities: _openEmergencyFacilities,
       onSignOut: widget.onSignOut,

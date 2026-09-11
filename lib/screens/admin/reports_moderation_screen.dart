@@ -62,7 +62,8 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Reports',
+      selectedMenuItem: 'Reports Moderation',
+      headerTitle: 'Reports Moderation',
       onSignOut: widget.onSignOut,
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
@@ -365,6 +366,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
         DataColumn(label: Text('DATE')),
         DataColumn(label: Text('STATUS')),
         DataColumn(label: Text('RISK')),
+        DataColumn(label: Text('ACTIONS')),
       ],
       rows: reports
           .map(
@@ -388,6 +390,17 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                         ? Colors.red
                         : AppColors.muted,
                     size: 18,
+                  ),
+                ),
+                DataCell(
+                  FilledButton.icon(
+                    onPressed: () => _openDetail(r),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      minimumSize: const Size(0, 32),
+                    ),
+                    icon: const Icon(Icons.rate_review_outlined, size: 14),
+                    label: const Text('Review'),
                   ),
                 ),
               ],
