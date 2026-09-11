@@ -3,8 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
-import 'awareness_cms_screen.dart';
-import 'threat_database_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class AdminGate extends StatefulWidget {
   const AdminGate({
@@ -59,15 +58,10 @@ class _AdminGateState extends State<AdminGate> {
         }
 
         if (snapshot.data == true) {
-          if (widget.initialAwareness) {
-            return AwarenessCmsScreen(
-              repository: widget.repository,
-              onSignOut: adminSignedOut,
-            );
-          }
-          return ThreatDatabaseScreen(
+          return AdminDashboardScreen(
             repository: widget.repository,
             onSignOut: adminSignedOut,
+            initialSection: widget.initialAwareness ? 'Awareness CMS' : 'Dashboard Overview',
           );
         }
 

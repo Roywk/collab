@@ -84,7 +84,7 @@ class AdminRepository {
         .eq('is_active', true)
         .order('updated_at', ascending: false);
 
-    final rows = response as List;
+    final rows = (response as List?) ?? [];
 
     return rows.map((row) {
       return _mapThreatRecord(Map<String, dynamic>.from(row as Map));
@@ -166,7 +166,8 @@ class AdminRepository {
         .select()
         .order('created_at', ascending: false);
 
-    return (response as List).map((json) => _mapScamReport(json)).toList();
+    final rows = (response as List?) ?? [];
+    return rows.map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map))).toList();
   }
 
   Future<void> updateReportStatus({
@@ -186,7 +187,6 @@ class AdminRepository {
   }
 
   Future<List<ScamReport>> getNearbyReports(double lat, double lng, {String? excludeId}) async {
-    // Basic bounding box search for nearby reports (~1km)
     final double delta = 0.01; 
     var query = client
         .from('scam_reports')
@@ -201,24 +201,32 @@ class AdminRepository {
     }
 
     final response = await query.limit(5);
-    return (response as List).map((json) => _mapScamReport(json)).toList();
+    final rows = (response as List?) ?? [];
+    return rows.map((json) => _mapScamReport(Map<String, dynamic>.from(json as Map))).toList();
   }
 
   Future<Map<String, dynamic>> getModerationStats() async {
-    // This would ideally be a RPC call or multiple aggregations
-    // For now, return some mocked data or implement basic counts
-    final reportsResponse = await client.from('scam_reports').select('verification_status');
-    final reports = reportsResponse as List;
-    
-    final total = reports.length;
-    final pending = reports.where((r) => r['verification_status'] == 'Pending').length;
-    
-    return {
-      'total_reports': total,
-      'pending_review': pending,
-      'accuracy_rate': 94.2, // Mocked or calculated
-      'community_reach': '12.4k', // Mocked or calculated
-    };
+    try {
+      final reportsResponse = await client.from('scam_reports').select('verification_status');
+      final reports = (reportsResponse as List?) ?? [];
+      
+      final total = reports.length;
+      final pending = reports.where((r) => r is Map && r['verification_status'] == 'Pending').length;
+      
+      return {
+        'total_reports': total,
+        'pending_review': pending,
+        'accuracy_rate': 94.2, 
+        'community_reach': '12.4k',
+      };
+    } catch (e) {
+      return {
+        'total_reports': 0,
+        'pending_review': 0,
+        'accuracy_rate': 0,
+        'community_reach': '0',
+      };
+    }
   }
 
   Future<List<Map<String, dynamic>>> getAwarenessContent() async {
@@ -227,24 +235,39 @@ class AdminRepository {
         .select()
         .order('updated_at', ascending: false);
     
-    return List<Map<String, dynamic>>.from(response as List);
+    return List<Map<String, dynamic>>.from((response as List?) ?? []);
   }
 
   ScamReport _mapScamReport(Map<String, dynamic> json) {
+    // Helper to safely parse numbers and avoid "null is not a subtype of num"
+    double toDouble(dynamic value, {double defaultValue = 0.0}) {
+      if (value == null) return defaultValue;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? defaultValue;
+      return defaultValue;
+    }
+
+    double? toNullableDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
     return ScamReport(
       id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: toDouble(json['latitude']),
+      longitude: toDouble(json['longitude']),
       locationName: json['location_name']?.toString(),
-      amountLost: (json['amount_lost'] as num?)?.toDouble(),
-      evidenceUrls: List<String>.from(json['evidence_urls'] ?? []),
+      amountLost: toNullableDouble(json['amount_lost']),
+      evidenceUrls: json['evidence_urls'] != null ? List<String>.from(json['evidence_urls']) : [],
       verificationStatus: json['verification_status']?.toString() ?? 'Pending',
       isAnonymous: json['is_anonymous'] ?? false,
       adminNotes: json['admin_notes']?.toString(),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }

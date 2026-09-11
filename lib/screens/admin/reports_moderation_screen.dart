@@ -62,7 +62,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Reports',
+      selectedMenuItem: 'Reports Moderation',
       onSignOut: widget.onSignOut,
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
@@ -307,7 +307,8 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
         Switch(
           value: _highRiskOnly,
           onChanged: (v) => setState(() => _highRiskOnly = v),
-          activeThumbColor: AppColors.blue,
+          activeTrackColor: AppColors.blue.withOpacity(0.5),
+          activeColor: AppColors.blue,
         ),
       ],
     );
@@ -365,6 +366,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
         DataColumn(label: Text('DATE')),
         DataColumn(label: Text('STATUS')),
         DataColumn(label: Text('RISK')),
+        DataColumn(label: Text('ACTIONS')),
       ],
       rows: reports
           .map(
@@ -390,6 +392,18 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                     size: 18,
                   ),
                 ),
+                DataCell(
+                  FilledButton.icon(
+                    onPressed: () => _openDetail(r),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      minimumSize: const Size(0, 32),
+                    ),
+                    icon: const Icon(Icons.rate_review_outlined, size: 14),
+                    label: const Text('Review', style: TextStyle(fontSize: 11)),
+                  ),
+                ),
               ],
             ),
           )
@@ -405,7 +419,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -455,7 +469,7 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                           (r) => CircleMarker(
                             point: LatLng(r.latitude, r.longitude),
                             radius: 8,
-                            color: Colors.red.withValues(alpha: 0.5),
+                            color: Colors.red.withOpacity(0.5),
                             borderColor: Colors.white,
                             borderStrokeWidth: 2,
                           ),
