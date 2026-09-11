@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/report_models.dart';
 import '../../services/report_service.dart';
 import '../../services/location_service.dart';
+import '../../services/address_lookup_service.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 
@@ -199,6 +200,14 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
     try {
       final pos = await LocationService().currentPosition();
 
+      // Look up human-readable address from coordinates
+      final lookupService = AddressLookupService();
+      final locationName = await lookupService.addressFromCoordinates(
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      );
+      lookupService.dispose();
+
       final finalCategory = _category == 'Other'
           ? _customCategoryController.text.trim()
           : _category;
@@ -209,6 +218,7 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
         description: _descController.text.trim(),
         latitude: pos.latitude,
         longitude: pos.longitude,
+        locationName: locationName,
         amountLost: double.tryParse(_amountController.text),
         isAnonymous: _isAnonymous,
       );
