@@ -50,6 +50,8 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   AwarenessContentType? _typeFilter;
   RealtimeChannel? _realtimeChannel;
   Timer? _reloadDebounce;
+  bool _showAnalytics = false;
+  Future<AwarenessAnalytics>? _analytics;
 
   @override
   void initState() {
@@ -71,6 +73,11 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
       'reward_partners',
       'reward_vouchers',
       'voucher_codes',
+      'reward_partner_evidence',
+      'user_completed_lessons',
+      'user_completed_scenarios',
+      'quiz_attempts',
+      'user_claimed_vouchers',
     ]) {
       channel = channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
@@ -85,7 +92,11 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   void _scheduleRealtimeReload() {
     _reloadDebounce?.cancel();
     _reloadDebounce = Timer(const Duration(milliseconds: 250), () {
-      if (mounted) unawaited(_reload());
+      if (!mounted) return;
+      if (_showAnalytics) {
+        setState(() => _analytics = _cmsRepository.getAnalytics());
+      }
+      unawaited(_reload());
     });
   }
 
@@ -184,7 +195,8 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     final draft = await showDialog<AdminPartnerDraft>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PartnerEditorDialog(partner: partner),
+      builder: (_) =>
+          PartnerEditorDialog(repository: _cmsRepository, partner: partner),
     );
     if (draft == null || !mounted) return;
     try {
@@ -261,6 +273,58 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     }
   }
 
+  Future<void> _showVoucherAudit(
+    AdminVoucherRecord voucher,
+  ) => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('${voucher.referenceCode} code inventory'),
+      content: SizedBox(
+        width: 560,
+        child: voucher.codeInventory.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('No unique voucher codes have been uploaded.'),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                itemCount: voucher.codeInventory.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final item = voucher.codeInventory[index];
+                  return ListTile(
+                    leading: Icon(
+                      item.status == 'claimed'
+                          ? Icons.check_circle
+                          : item.status == 'available'
+                          ? Icons.confirmation_number_outlined
+                          : Icons.block_outlined,
+                      color: item.status == 'claimed'
+                          ? AppColors.green
+                          : item.status == 'available'
+                          ? AppColors.blue
+                          : AppColors.slate,
+                    ),
+                    title: SelectableText(item.code),
+                    subtitle: item.claimedAt == null
+                        ? null
+                        : Text(
+                            'Redeemed ${DateFormat('dd MMM yyyy, HH:mm').format(item.claimedAt!.toLocal())}',
+                          ),
+                    trailing: _Status(status: item.status),
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+
   Future<bool> _confirm(String title, String message) async =>
       await showDialog<bool>(
         context: context,
@@ -287,10 +351,24 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
     ).showSnackBar(SnackBar(content: Text('$title: $error')));
   }
 
+  void _openAnalytics() {
+    setState(() {
+      _showAnalytics = true;
+      _analytics = _cmsRepository.getAnalytics();
+    });
+  }
+
+  void _closeAnalytics() => setState(() => _showAnalytics = false);
+
+  void _refreshAnalytics() =>
+      setState(() => _analytics = _cmsRepository.getAnalytics());
+
   @override
   Widget build(BuildContext context) => AdminShell(
     selectedMenuItem: 'Awareness CMS',
-    headerTitle: 'Educational Content Management',
+    headerTitle: _showAnalytics
+        ? 'Awareness Performance & Audit'
+        : 'Educational Content Management',
     onSignOut: widget.onSignOut,
     onOpenDashboard: widget.onOpenDashboard,
     onOpenReports: widget.onOpenReports,
@@ -309,6 +387,13 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
           return _CmsError(error: snapshot.error, onRetry: _reload);
         }
         final data = snapshot.data!;
+        if (_showAnalytics) {
+          return _AnalyticsView(
+            future: _analytics ??= _cmsRepository.getAnalytics(),
+            onBack: _closeAnalytics,
+            onRefresh: _refreshAnalytics,
+          );
+        }
         final items = data.contents.where((item) {
           final matchesStatus = _filter == 'all' || item.status == _filter;
           final matchesType = _typeFilter == null || item.type == _typeFilter;
@@ -319,7 +404,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              _Heading(onCreate: _newContent),
+              _Heading(onCreate: _newContent, onInsights: _openAnalytics),
               const SizedBox(height: 18),
               Wrap(
                 spacing: 12,
@@ -548,6 +633,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                           voucher: voucher,
                           onEdit: () => _editVoucher(data, voucher),
                           onArchive: () => _archiveVoucher(voucher),
+                          onAudit: () => _showVoucherAudit(voucher),
                         ),
                       ),
                   ],
@@ -562,8 +648,9 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
 }
 
 class _Heading extends StatelessWidget {
-  const _Heading({required this.onCreate});
+  const _Heading({required this.onCreate, required this.onInsights});
   final VoidCallback onCreate;
+  final VoidCallback onInsights;
   @override
   Widget build(BuildContext context) => Row(
     children: [
@@ -587,12 +674,214 @@ class _Heading extends StatelessWidget {
           ],
         ),
       ),
-      FilledButton.icon(
-        onPressed: onCreate,
-        icon: const Icon(Icons.add),
-        label: const Text('Add content'),
+      Wrap(
+        spacing: 10,
+        children: [
+          OutlinedButton.icon(
+            onPressed: onInsights,
+            icon: const Icon(Icons.insights_outlined),
+            label: const Text('Performance report'),
+          ),
+          FilledButton.icon(
+            onPressed: onCreate,
+            icon: const Icon(Icons.add),
+            label: const Text('Add content'),
+          ),
+        ],
       ),
     ],
+  );
+}
+
+class _AnalyticsView extends StatelessWidget {
+  const _AnalyticsView({
+    required this.future,
+    required this.onBack,
+    required this.onRefresh,
+  });
+  final Future<AwarenessAnalytics> future;
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<AwarenessAnalytics>(
+    future: future,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      }
+      if (snapshot.hasError) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.query_stats, size: 42, color: AppColors.red),
+              const SizedBox(height: 10),
+              const Text('Performance data is unavailable.'),
+              const SizedBox(height: 10),
+              FilledButton(
+                onPressed: onRefresh,
+                child: const Text('Try again'),
+              ),
+            ],
+          ),
+        );
+      }
+      final data = snapshot.data!;
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Back to Awareness CMS',
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Performance report',
+                      style: TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      'Learning engagement, outcomes, XP and reward audit trail.',
+                      style: TextStyle(color: AppColors.slate),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh report',
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _Metric(
+                label: 'Active learners',
+                value: '${data.activeLearners}',
+                icon: Icons.groups_outlined,
+              ),
+              _Metric(
+                label: 'Lesson completions',
+                value: '${data.lessonCompletions}',
+                icon: Icons.menu_book_outlined,
+              ),
+              _Metric(
+                label: 'Scenario completions',
+                value: '${data.scenarioCompletions}',
+                icon: Icons.alt_route,
+              ),
+              _Metric(
+                label: 'Quiz attempts',
+                value: '${data.quizAttempts}',
+                icon: Icons.quiz_outlined,
+              ),
+              _Metric(
+                label: 'XP awarded',
+                value: '${data.xpAwarded}',
+                icon: Icons.bolt_outlined,
+                accent: AppColors.amber,
+              ),
+              _Metric(
+                label: 'Voucher claims',
+                value: '${data.voucherClaims}',
+                icon: Icons.redeem_outlined,
+                accent: AppColors.green,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Quiz graduation rate',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: data.quizPassRate,
+                  minHeight: 10,
+                  borderRadius: BorderRadius.circular(12),
+                  backgroundColor: AppColors.line,
+                  color: AppColors.green,
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '${(data.quizPassRate * 100).round()}% · ${data.quizPasses} of ${data.quizAttempts} attempts graduated',
+                  style: const TextStyle(color: AppColors.slate),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Recent voucher redemptions',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (data.recentClaims.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: Text('No voucher redemptions yet.')),
+                  )
+                else
+                  for (final event in data.recentClaims)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(
+                        backgroundColor: AppColors.greenSoft,
+                        child: Icon(
+                          Icons.verified_outlined,
+                          color: AppColors.green,
+                        ),
+                      ),
+                      title: Text(
+                        '${event.userName} redeemed ${event.voucherTitle}',
+                      ),
+                      subtitle: Text(
+                        '${event.partnerName} · ${DateFormat('dd MMM yyyy, HH:mm').format(event.claimedAt.toLocal())}',
+                      ),
+                      trailing: SelectableText(
+                        event.code,
+                        style: const TextStyle(
+                          color: AppColors.blue,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -732,10 +1021,12 @@ class _VoucherRow extends StatelessWidget {
     required this.voucher,
     required this.onEdit,
     required this.onArchive,
+    required this.onAudit,
   });
   final AdminVoucherRecord voucher;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
+  final VoidCallback onAudit;
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
@@ -774,6 +1065,11 @@ class _VoucherRow extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+        ),
+        IconButton(
+          tooltip: 'View code inventory and claims',
+          onPressed: onAudit,
+          icon: const Icon(Icons.inventory_2_outlined, color: AppColors.blue),
         ),
         IconButton(
           tooltip: 'Edit voucher',

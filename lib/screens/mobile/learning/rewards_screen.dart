@@ -5,6 +5,7 @@ import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
 import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
+import 'merchant_app_demo_screen.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({required this.repository, super.key});
@@ -112,7 +113,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
   void _showCode(RewardVoucher voucher, String code) {
     showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         child: Padding(
           padding: const EdgeInsets.all(22),
@@ -181,9 +182,28 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 style: const TextStyle(color: AppColors.slate, fontSize: 9),
               ),
               const SizedBox(height: 18),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MerchantAppDemoScreen(
+                        partnerName: voucher.partnerName,
+                        voucherTitle: voucher.title,
+                        benefit: voucher.discountAmount,
+                        validCode: code,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('Try in partner demo'),
+              ),
+              const SizedBox(height: 8),
               PrimaryActionButton(
                 label: 'Done',
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
               ),
             ],
           ),

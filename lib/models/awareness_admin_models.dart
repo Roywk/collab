@@ -69,6 +69,7 @@ class AdminPartnerRecord {
     this.contactPhone,
     this.websiteUrl,
     this.verificationNotes,
+    this.evidenceUrls = const [],
   });
 
   final String id;
@@ -83,6 +84,7 @@ class AdminPartnerRecord {
   final String? contactPhone;
   final String? websiteUrl;
   final String? verificationNotes;
+  final List<String> evidenceUrls;
 
   bool get isVerified => verificationStatus == 'verified' && isActive;
 }
@@ -100,6 +102,7 @@ class AdminPartnerDraft {
     this.contactPhone,
     this.websiteUrl,
     this.verificationNotes,
+    this.evidenceUrls = const [],
   });
 
   final String? id;
@@ -113,6 +116,46 @@ class AdminPartnerDraft {
   final String? contactPhone;
   final String? websiteUrl;
   final String? verificationNotes;
+  final List<String> evidenceUrls;
+}
+
+class AwarenessAnalytics {
+  const AwarenessAnalytics({
+    required this.lessonCompletions,
+    required this.scenarioCompletions,
+    required this.quizAttempts,
+    required this.quizPasses,
+    required this.xpAwarded,
+    required this.voucherClaims,
+    required this.activeLearners,
+    required this.recentClaims,
+  });
+
+  final int lessonCompletions;
+  final int scenarioCompletions;
+  final int quizAttempts;
+  final int quizPasses;
+  final int xpAwarded;
+  final int voucherClaims;
+  final int activeLearners;
+  final List<AwarenessClaimEvent> recentClaims;
+
+  double get quizPassRate => quizAttempts == 0 ? 0 : quizPasses / quizAttempts;
+}
+
+class AwarenessClaimEvent {
+  const AwarenessClaimEvent({
+    required this.userName,
+    required this.voucherTitle,
+    required this.partnerName,
+    required this.code,
+    required this.claimedAt,
+  });
+  final String userName;
+  final String voucherTitle;
+  final String partnerName;
+  final String code;
+  final DateTime claimedAt;
 }
 
 class AdminLessonDraft {
@@ -243,6 +286,7 @@ class AdminVoucherRecord {
     required this.availableCodes,
     required this.claimedCodes,
     this.partnerId,
+    this.codeInventory = const [],
   });
 
   final String id;
@@ -257,6 +301,18 @@ class AdminVoucherRecord {
   final int availableCodes;
   final int claimedCodes;
   final String? partnerId;
+  final List<AdminVoucherCode> codeInventory;
+}
+
+class AdminVoucherCode {
+  const AdminVoucherCode({
+    required this.code,
+    required this.status,
+    this.claimedAt,
+  });
+  final String code;
+  final String status;
+  final DateTime? claimedAt;
 }
 
 class AdminVoucherDraft {

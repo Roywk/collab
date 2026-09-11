@@ -19,7 +19,7 @@ class AwarenessAdminRepository {
           .from('reward_vouchers')
           .select(
             '*,'
-            'voucher_codes(id,status)',
+            'voucher_codes(id,code,status,claimed_at)',
           ),
     ]);
 
@@ -55,6 +55,17 @@ class AwarenessAdminRepository {
         availableCodes: available,
         claimedCodes: claimed,
         partnerId: row['partner_id']?.toString(),
+        codeInventory: codes
+            .map(
+              (code) => AdminVoucherCode(
+                code: code['code']?.toString() ?? '',
+                status: code['status']?.toString() ?? 'available',
+                claimedAt: DateTime.tryParse(
+                  code['claimed_at']?.toString() ?? '',
+                ),
+              ),
+            )
+            .toList(),
       );
     }).toList();
 
@@ -71,7 +82,7 @@ class AwarenessAdminRepository {
     try {
       final response = await client
           .from('reward_partners')
-          .select()
+          .select('*,reward_partner_evidence(file_url)')
           .order('updated_at', ascending: false);
       return (response as List)
           .map(
@@ -88,6 +99,10 @@ class AwarenessAdminRepository {
               contactPhone: row['contact_phone'],
               websiteUrl: row['website_url'],
               verificationNotes: row['verification_notes'],
+              evidenceUrls:
+                  ((row['reward_partner_evidence'] as List?) ?? const [])
+                      .map<String>((item) => item['file_url'].toString())
+                      .toList(),
             ),
           )
           .toList();
@@ -106,16 +121,44 @@ class AwarenessAdminRepository {
       'contact_email': _nullable(draft.contactEmail),
       'contact_phone': _nullable(draft.contactPhone),
       'website_url': _nullable(draft.websiteUrl),
-      'verification_status': draft.verificationStatus,
+      'verification_status': draft.verificationStatus == 'verified'
+          ? 'pending'
+          : draft.verificationStatus,
       'verification_notes': _nullable(draft.verificationNotes),
       'is_active': draft.isActive,
       'updated_at': DateTime.now().toIso8601String(),
     };
+    String partnerId;
     if (draft.id == null) {
-      await client.from('reward_partners').insert(data);
+      final row = await client
+          .from('reward_partners')
+          .insert(data)
+          .select('id')
+          .single();
+      partnerId = row['id'].toString();
     } else {
-      await client.from('reward_partners').update(data).eq('id', draft.id!);
+      partnerId = draft.id!;
+      // Existing evidence must be written before a legacy partner can be
+      // revalidated by the deferred database policy.
+      data['verification_status'] = draft.verificationStatus;
     }
+    for (final url in draft.evidenceUrls.toSet()) {
+      await client.from('reward_partner_evidence').upsert({
+        'partner_id': partnerId,
+        'file_name': Uri.tryParse(url)?.pathSegments.last ?? 'evidence-image',
+        'file_url': url,
+        'uploaded_by': client.auth.currentUser?.id,
+      }, onConflict: 'partner_id,file_url');
+    }
+    if (draft.verificationStatus == 'verified' && draft.evidenceUrls.isEmpty) {
+      throw StateError(
+        'Attach at least one verification evidence image before verifying this partner.',
+      );
+    }
+    await client
+        .from('reward_partners')
+        .update({...data, 'verification_status': draft.verificationStatus})
+        .eq('id', partnerId);
   }
 
   Future<void> archivePartner(String id) async {
@@ -446,49 +489,13 @@ class AwarenessAdminRepository {
       await client.from('reward_vouchers').update(data).eq('id', voucherId);
     }
 
-    final existingRows = await client
-        .from('voucher_codes')
-        .select('code,status')
-        .eq('voucher_id', voucherId);
-    final existing = {
-      for (final row in existingRows as List)
-        row['code'].toString().toUpperCase(): row['status'].toString(),
-    };
-    final newCodes = codes
-        .where((code) => !existing.containsKey(code))
-        .toList();
-    final restoreCodes = codes
-        .where((code) => existing[code] == 'disabled')
-        .toList();
-    final disableCodes = existing.entries
-        .where(
-          (entry) => entry.value == 'available' && !codes.contains(entry.key),
-        )
-        .map((entry) => entry.key)
-        .toList();
-    if (newCodes.isNotEmpty) {
-      await client
-          .from('voucher_codes')
-          .insert(
-            newCodes
-                .map((code) => {'voucher_id': voucherId, 'code': code})
-                .toList(),
-          );
-    }
-    if (restoreCodes.isNotEmpty) {
-      await client
-          .from('voucher_codes')
-          .update({'status': 'available'})
-          .eq('voucher_id', voucherId)
-          .inFilter('code', restoreCodes);
-    }
-    if (disableCodes.isNotEmpty) {
-      await client
-          .from('voucher_codes')
-          .update({'status': 'disabled'})
-          .eq('voucher_id', voucherId)
-          .inFilter('code', disableCodes);
-    }
+    await client.rpc(
+      'admin_replace_voucher_codes',
+      params: {
+        'target_voucher_id': voucherId,
+        'supplied_codes': codes.toList(),
+      },
+    );
     if (draft.id == null && draft.status != 'draft') {
       await setVoucherStatus(voucherId, draft.status);
     }
@@ -529,6 +536,34 @@ class AwarenessAdminRepository {
           fileOptions: FileOptions(contentType: contentType, upsert: false),
         );
     return client.storage.from(bucket).getPublicUrl(path);
+  }
+
+  Future<AwarenessAnalytics> getAnalytics() async {
+    final raw = await client.rpc('admin_awareness_analytics');
+    final data = Map<String, dynamic>.from(raw as Map);
+    int count(String key) => (data[key] as num?)?.toInt() ?? 0;
+    return AwarenessAnalytics(
+      lessonCompletions: count('lesson_completions'),
+      scenarioCompletions: count('scenario_completions'),
+      quizAttempts: count('quiz_attempts'),
+      quizPasses: count('quiz_passes'),
+      xpAwarded: count('xp_awarded'),
+      voucherClaims: count('voucher_claims'),
+      activeLearners: count('active_learners'),
+      recentClaims: ((data['recent_claims'] as List?) ?? const [])
+          .map(
+            (row) => AwarenessClaimEvent(
+              userName: row['display_name'] ?? 'Traveller',
+              voucherTitle: row['title'] ?? 'Reward',
+              partnerName: row['partner_name'] ?? 'Partner',
+              code: row['full_promo_code'] ?? '',
+              claimedAt:
+                  DateTime.tryParse(row['claimed_at']?.toString() ?? '') ??
+                  DateTime.now(),
+            ),
+          )
+          .toList(),
+    );
   }
 
   String? _nullable(String? value) {

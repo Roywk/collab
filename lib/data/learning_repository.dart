@@ -37,16 +37,17 @@ class LearningRepository {
     return UserLearningProfile(
       userId: userId,
       totalXp: profileData['total_xp'] ?? 0,
-      currentLevel: profileData['current_level'] ?? 1,
+      currentLevel: profileData['current_level'] ?? 0,
       vouchersCount: vouchersResponse.count,
-      rankTitle: _getRankTitle(profileData['current_level'] ?? 1),
+      rankTitle: _getRankTitle(profileData['current_level'] ?? 0),
       availableXp: profileData['available_xp'] ?? profileData['total_xp'] ?? 0,
     );
   }
 
   String _getRankTitle(int level) {
     return switch (level) {
-      <= 1 => 'Vigilant Voyager',
+      <= 0 => 'Safety Starter',
+      1 => 'Vigilant Voyager',
       2 => 'Scam Spotter',
       3 => 'Street-Smart Explorer',
       4 => 'Safety Sentinel',

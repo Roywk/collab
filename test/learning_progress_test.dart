@@ -7,9 +7,9 @@ void main() {
       final profile = UserLearningProfile(
         userId: 'traveller-1',
         totalXp: 0,
-        currentLevel: 1,
+        currentLevel: 0,
         vouchersCount: 0,
-        rankTitle: 'Vigilant Voyager',
+        rankTitle: 'Safety Starter',
       );
 
       expect(profile.xpIntoCurrentLevel, 0);
@@ -21,7 +21,7 @@ void main() {
       final profile = UserLearningProfile(
         userId: 'traveller-2',
         totalXp: 450,
-        currentLevel: 3,
+        currentLevel: 2,
         vouchersCount: 1,
         rankTitle: 'Vigilant Voyager',
       );
@@ -35,7 +35,7 @@ void main() {
       final profile = UserLearningProfile(
         userId: 'traveller-3',
         totalXp: 999,
-        currentLevel: 1,
+        currentLevel: 0,
         vouchersCount: 0,
         rankTitle: 'Scam-Proof Guardian',
       );
@@ -48,21 +48,21 @@ void main() {
         userId: 'traveller-4',
         totalXp: 650,
         availableXp: 250,
-        currentLevel: 4,
+        currentLevel: 3,
         vouchersCount: 1,
         rankTitle: 'Safety Sentinel',
       );
 
       expect(profile.totalXp, 650);
       expect(profile.spendableXp, 250);
-      expect(profile.currentLevel, 4);
+      expect(profile.currentLevel, 3);
     });
 
     test('uses lifetime XP as a safe fallback before migration', () {
       final profile = UserLearningProfile(
         userId: 'traveller-5',
         totalXp: 180,
-        currentLevel: 1,
+        currentLevel: 0,
         vouchersCount: 0,
         rankTitle: 'Vigilant Voyager',
       );

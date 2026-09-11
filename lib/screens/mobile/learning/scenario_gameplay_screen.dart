@@ -3,7 +3,7 @@ import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
 import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 class ScenarioGameplayScreen extends StatefulWidget {
   const ScenarioGameplayScreen({
@@ -357,78 +357,113 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   }
 }
 
-class _ScenarioMedia extends StatelessWidget {
+class _ScenarioMedia extends StatefulWidget {
   const _ScenarioMedia({required this.scenario});
   final Scenario scenario;
 
-  Future<void> _openVideo(BuildContext context) async {
+  @override
+  State<_ScenarioMedia> createState() => _ScenarioMediaState();
+}
+
+class _ScenarioMediaState extends State<_ScenarioMedia> {
+  VideoPlayerController? _controller;
+  Object? _videoError;
+
+  Scenario get scenario => widget.scenario;
+
+  @override
+  void initState() {
+    super.initState();
+    if (scenario.mediaType == 'video') _prepareVideo();
+  }
+
+  Future<void> _prepareVideo() async {
     final uri = Uri.tryParse(scenario.mediaUrl ?? '');
-    if (uri == null ||
-        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This scenario video could not be opened.'),
-        ),
-      );
+    if (uri == null) {
+      setState(() => _videoError = StateError('Invalid video URL'));
+      return;
     }
+    final controller = VideoPlayerController.networkUrl(uri);
+    _controller = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) setState(() => _videoError = error);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (scenario.mediaType == 'video') {
-      return Semantics(
-        label: scenario.mediaCaption ?? 'Scenario video',
-        button: true,
-        child: InkWell(
-          onTap: () => _openVideo(context),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            height: 170,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF111827), Color(0xFF334155)],
+      final controller = _controller;
+      if (_videoError != null) {
+        return Container(
+          height: 150,
+          decoration: BoxDecoration(
+            color: AppColors.redSoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          alignment: Alignment.center,
+          child: const Text('Video preview is unavailable.'),
+        );
+      }
+      if (controller == null || !controller.value.isInitialized) {
+        return const SizedBox(
+          height: 150,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: ColoredBox(
+          color: Colors.black,
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
               ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    color: AppColors.blue,
-                    size: 34,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Watch scenario briefing',
-                  style: TextStyle(
+              VideoProgressIndicator(
+                controller,
+                allowScrubbing: true,
+                colors: const VideoProgressColors(playedColor: AppColors.blue),
+              ),
+              Row(
+                children: [
+                  IconButton(
                     color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (scenario.mediaCaption?.isNotEmpty == true) ...[
-                  const SizedBox(height: 5),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      scenario.mediaCaption!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                      ),
+                    tooltip: controller.value.isPlaying ? 'Pause' : 'Play',
+                    onPressed: () async {
+                      controller.value.isPlaying
+                          ? await controller.pause()
+                          : await controller.play();
+                      if (mounted) setState(() {});
+                    },
+                    icon: Icon(
+                      controller.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                     ),
                   ),
+                  Expanded(
+                    child: Text(
+                      scenario.mediaCaption ?? 'Scenario briefing',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                 ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );

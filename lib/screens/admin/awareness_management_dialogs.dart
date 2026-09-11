@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_theme.dart';
+import '../../data/awareness_admin_repository.dart';
 import '../../models/awareness_admin_models.dart';
 
 class PartnerEditorDialog extends StatefulWidget {
-  const PartnerEditorDialog({this.partner, super.key});
+  const PartnerEditorDialog({
+    required this.repository,
+    this.partner,
+    super.key,
+  });
+  final AwarenessAdminRepository repository;
   final AdminPartnerRecord? partner;
 
   @override
@@ -23,6 +30,8 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
   late final TextEditingController _notes;
   late String _category;
   late String _status;
+  late final List<String> _evidenceUrls;
+  bool _uploadingEvidence = false;
 
   @override
   void initState() {
@@ -39,6 +48,7 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
     _notes = TextEditingController(text: partner?.verificationNotes ?? '');
     _category = partner?.category ?? 'Hotel';
     _status = partner?.verificationStatus ?? 'pending';
+    _evidenceUrls = [...?partner?.evidenceUrls];
   }
 
   @override
@@ -59,6 +69,16 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    if (_status == 'verified' && _evidenceUrls.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Attach at least one evidence image before verification.',
+          ),
+        ),
+      );
+      return;
+    }
     Navigator.pop(
       context,
       AdminPartnerDraft(
@@ -72,9 +92,43 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
         websiteUrl: _website.text.trim(),
         verificationStatus: _status,
         verificationNotes: _notes.text.trim(),
+        evidenceUrls: _evidenceUrls,
         isActive: widget.partner?.isActive ?? true,
       ),
     );
+  }
+
+  Future<void> _uploadEvidence() async {
+    final files = await ImagePicker().pickMultiImage(
+      imageQuality: 88,
+      limit: 5 - _evidenceUrls.length,
+    );
+    if (files.isEmpty || !mounted) return;
+    setState(() => _uploadingEvidence = true);
+    try {
+      for (final file in files) {
+        final extension = file.name.split('.').last.toLowerCase();
+        if (!{'jpg', 'jpeg', 'png'}.contains(extension)) {
+          throw StateError('Evidence must be JPG, JPEG, or PNG.');
+        }
+        final url = await widget.repository.uploadAwarenessMedia(
+          bytes: await file.readAsBytes(),
+          fileName: file.name,
+          folder: 'partner-evidence',
+          contentType: extension == 'png' ? 'image/png' : 'image/jpeg',
+        );
+        if (!_evidenceUrls.contains(url)) _evidenceUrls.add(url);
+      }
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Evidence upload failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingEvidence = false);
+    }
   }
 
   @override
@@ -84,7 +138,7 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
       widget.partner == null ? 'Add reward partner' : 'Review reward partner',
     ),
     content: SizedBox(
-      width: 700,
+      width: 760,
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -118,14 +172,15 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
                         labelText: 'Partner category',
                       ),
                       items:
-                          const [
+                          <String>{
+                                if (_category.isNotEmpty) _category,
                                 'Hotel',
                                 'Restaurant',
                                 'Transport',
                                 'Retail',
                                 'Attraction',
                                 'Other',
-                              ]
+                              }
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
@@ -190,6 +245,77 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
                 required: _status == 'verified',
                 lines: 3,
               ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.canvas,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Partnership evidence',
+                            style: TextStyle(
+                              color: AppColors.navy,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed:
+                              _uploadingEvidence || _evidenceUrls.length >= 5
+                              ? null
+                              : _uploadEvidence,
+                          icon: _uploadingEvidence
+                              ? const SizedBox.square(
+                                  dimension: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.upload_file_outlined),
+                          label: const Text('Upload evidence'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'JPG, JPEG or PNG · up to 5 images. Required only for Verified status.',
+                      style: TextStyle(color: AppColors.slate, fontSize: 10),
+                    ),
+                    if (_evidenceUrls.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < _evidenceUrls.length;
+                            index++
+                          )
+                            Chip(
+                              avatar: const Icon(
+                                Icons.verified_outlined,
+                                size: 16,
+                              ),
+                              label: Text('Evidence ${index + 1}'),
+                              onDeleted: () =>
+                                  setState(() => _evidenceUrls.removeAt(index)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               if (_status == 'verified')
                 Container(
                   margin: const EdgeInsets.only(top: 10),
@@ -214,7 +340,7 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
         child: const Text('Cancel'),
       ),
       FilledButton.icon(
-        onPressed: _save,
+        onPressed: _uploadingEvidence ? null : _save,
         icon: const Icon(Icons.save_outlined),
         label: const Text('Save partner'),
       ),
@@ -241,6 +367,13 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
   late String _status;
   late DateTime _validUntil;
 
+  List<String> get _parsedCodes => _codes.text
+      .split(RegExp(r'[\n,;]+'))
+      .map((code) => code.trim().toUpperCase())
+      .where((code) => code.isNotEmpty)
+      .toSet()
+      .toList();
+
   @override
   void initState() {
     super.initState();
@@ -249,6 +382,7 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
     _discount = TextEditingController(text: draft?.discountAmount ?? '');
     _xp = TextEditingController(text: '${draft?.requiredXp ?? 300}');
     _codes = TextEditingController(text: draft?.codes.join('\n') ?? '');
+    _codes.addListener(_codesChanged);
     _partnerId = draft?.partnerId.isNotEmpty == true
         ? draft!.partnerId
         : widget.partners.first.id;
@@ -262,8 +396,13 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
     _title.dispose();
     _discount.dispose();
     _xp.dispose();
+    _codes.removeListener(_codesChanged);
     _codes.dispose();
     super.dispose();
+  }
+
+  void _codesChanged() {
+    if (mounted) setState(() {});
   }
 
   void _save() {
@@ -281,11 +420,7 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
         requiredXp: int.parse(_xp.text.trim()),
         validUntil: _validUntil,
         status: _status,
-        codes: _codes.text
-            .split(RegExp(r'[\n,;]+'))
-            .map((code) => code.trim())
-            .where((code) => code.isNotEmpty)
-            .toList(),
+        codes: _parsedCodes,
       ),
     );
   }
@@ -296,7 +431,7 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
       widget.draft == null ? 'Deploy partner voucher' : 'Edit partner voucher',
     ),
     content: SizedBox(
-      width: 600,
+      width: 680,
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -391,11 +526,18 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
                 lines: 5,
                 voucherCodes: true,
               ),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Existing claimed codes are protected. New codes are appended and duplicates are ignored.',
-                  style: TextStyle(color: AppColors.slate, fontSize: 9),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Text(
+                    '${_parsedCodes.length} unique code${_parsedCodes.length == 1 ? '' : 's'} ready · one traveller per code. Existing claimed codes stay protected.',
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
