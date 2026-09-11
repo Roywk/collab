@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../models/module_models.dart';
+import 'report_scam_screen.dart';
 
 class QrResultScreen extends StatelessWidget {
   const QrResultScreen({required this.result, super.key});
@@ -86,6 +87,40 @@ class QrResultScreen extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Destination copied.')));
+  }
+
+  String buildReportDescription() {
+    final lines = <String>[
+      'QR verification result: ${result.verdict.label}',
+      'Scanned destination: ${result.rawValue}',
+    ];
+
+    final merchantName = result.merchantName?.trim() ?? '';
+    if (merchantName.isNotEmpty) {
+      lines.add('Matched merchant or entity: $merchantName');
+    }
+
+    if (result.reasons.isNotEmpty) {
+      lines.add('Verification findings:');
+      lines.addAll(result.reasons.map((reason) => '- $reason'));
+    }
+
+    lines.add('');
+    lines.add('Additional incident details:');
+    return lines.join('\n');
+  }
+
+  void reportQrCode(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ReportScamScreen(
+          initialCategory: 'QR Code Scam',
+          initialDescription: buildReportDescription(),
+          prefillSource: 'QR verification',
+          initialThreatRecordId: result.threatRecordId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -272,6 +307,17 @@ class QrResultScreen extends StatelessWidget {
               icon: Icons.phone_in_talk_outlined,
               color: AppColors.red,
               onPressed: () => Navigator.of(context).pushNamed('/emergency'),
+            ),
+          ],
+
+          if (result.rawValue.isNotEmpty &&
+              result.verdict != QrVerdict.invalid) ...[
+            const SizedBox(height: 12),
+            PrimaryActionButton(
+              label: 'Report This QR Code',
+              icon: Icons.flag_outlined,
+              color: AppColors.red,
+              onPressed: () => reportQrCode(context),
             ),
           ],
 

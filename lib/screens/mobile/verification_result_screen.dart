@@ -4,6 +4,7 @@ import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 import '../../data/verification_repository.dart';
 import '../../models/module_models.dart';
+import 'report_scam_screen.dart';
 import 'scam_history_screen.dart';
 
 class VerificationResultScreen extends StatelessWidget {
@@ -48,6 +49,44 @@ class VerificationResultScreen extends StatelessWidget {
       case RiskLevel.highRisk:
         return AppColors.redSoft;
     }
+  }
+
+  String buildReportDescription() {
+    final lines = <String>[
+      'Business verification result: ${record.riskLevel.label}',
+      'Matched record: ${record.recordCode}',
+      'Business or entity: ${record.businessName}',
+    ];
+
+    if ((record.phone ?? '').isNotEmpty) {
+      lines.add('Phone: ${record.phone}');
+    }
+    if ((record.email ?? '').isNotEmpty) {
+      lines.add('Email: ${record.email}');
+    }
+    if ((record.officialUrl ?? '').isNotEmpty) {
+      lines.add('Website: ${record.officialUrl}');
+    }
+    if (record.flaggedActivities.isNotEmpty) {
+      lines.add('Existing warning: ${record.flaggedActivities}');
+    }
+
+    lines.add('');
+    lines.add('Additional incident details:');
+    return lines.join('\n');
+  }
+
+  void reportBusiness(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ReportScamScreen(
+          initialCategory: record.category,
+          initialDescription: buildReportDescription(),
+          prefillSource: 'business verification',
+          initialThreatRecordId: record.id,
+        ),
+      ),
+    );
   }
 
   @override
@@ -140,7 +179,7 @@ class VerificationResultScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Approximate match found',
+                          'Related record found',
                           style: TextStyle(
                             color: AppColors.navy,
                             fontSize: 13,
@@ -148,11 +187,10 @@ class VerificationResultScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Fuzzy search found this record with '
-                          '${record.matchDistance} character difference'
-                          '${record.matchDistance == 1 ? '' : 's'}.',
-                          style: const TextStyle(
+                        const Text(
+                          'The entered information partially or approximately '
+                              'matches this threat record.',
+                          style: TextStyle(
                             color: AppColors.slate,
                             fontSize: 11,
                             height: 1.4,
@@ -253,8 +291,8 @@ class VerificationResultScreen extends StatelessWidget {
                   SizedBox(height: 9),
                   Text(
                     'This result is Unknown, not Safe. The absence of a '
-                    'database match does not guarantee that the business is '
-                    'legitimate. Check the spelling and continue carefully.',
+                        'database match does not guarantee that the business is '
+                        'legitimate. Check the spelling and continue carefully.',
                     style: TextStyle(
                       color: AppColors.slate,
                       fontSize: 11,
@@ -294,9 +332,9 @@ class VerificationResultScreen extends StatelessWidget {
                   SizedBox(height: 9),
                   Text(
                     'The database currently contains no verified '
-                    'complaints that increase this entity’s risk. '
-                    'This does not guarantee absolute safety, so '
-                    'continue using normal precautions.',
+                        'complaints that increase this entity’s risk. '
+                        'This does not guarantee absolute safety, so '
+                        'continue using normal precautions.',
                     style: TextStyle(
                       color: AppColors.slate,
                       fontSize: 11,
@@ -307,52 +345,62 @@ class VerificationResultScreen extends StatelessWidget {
               ),
             )
           else ...[
-            SurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Risk Analysis',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 9),
-                  KeyValueRow(
-                    label: 'Verified Reports',
-                    value: '${record.reportCount} reports',
-                    valueColor: riskColor,
-                  ),
-                  KeyValueRow(
-                    label: 'Risk Points',
-                    value: '${record.riskPoints} points',
-                    valueColor: riskColor,
-                  ),
-                  KeyValueRow(
-                    label: 'Calculated Result',
-                    value: record.riskLevel.label,
-                    valueColor: riskColor,
-                  ),
-                ],
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Risk Analysis',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 9),
+                    KeyValueRow(
+                      label: 'Verified Reports',
+                      value: '${record.reportCount} reports',
+                      valueColor: riskColor,
+                    ),
+                    KeyValueRow(
+                      label: 'Risk Points',
+                      value: '${record.riskPoints} points',
+                      valueColor: riskColor,
+                    ),
+                    KeyValueRow(
+                      label: 'Calculated Result',
+                      value: record.riskLevel.label,
+                      valueColor: riskColor,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              PrimaryActionButton(
+                label: 'View Scam History',
+                icon: Icons.history,
+                color: riskColor,
+                onPressed: record.id.isEmpty
+                    ? null
+                    : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) {
+                        return ScamHistoryScreen(
+                          repository: repository,
+                          record: record,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+
+          if (!isUnknown) ...[
+            const SizedBox(height: 12),
             PrimaryActionButton(
-              label: 'View Scam History',
-              icon: Icons.history,
-              color: riskColor,
-              onPressed: record.id.isEmpty
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) {
-                            return ScamHistoryScreen(
-                              repository: repository,
-                              record: record,
-                            );
-                          },
-                        ),
-                      );
-                    },
+              label: 'Report This Business',
+              icon: Icons.flag_outlined,
+              color: AppColors.red,
+              onPressed: () => reportBusiness(context),
             ),
           ],
 

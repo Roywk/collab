@@ -5,9 +5,13 @@ import '../models/report_models.dart';
 class ReportService {
   final _supabase = Supabase.instance.client;
 
-  Future<void> submitReport(ScamReport report, {List<File>? evidenceFiles}) async {
+  Future<void> submitReport(
+      ScamReport report, {
+        List<File>? evidenceFiles,
+        String? threatRecordId,
+      }) async {
     final userId = _supabase.auth.currentUser?.id;
-    
+
     // 1. Upload evidence if any
     List<String> uploadedUrls = [];
     if (evidenceFiles != null && evidenceFiles.isNotEmpty) {
@@ -15,7 +19,7 @@ class ReportService {
         final file = evidenceFiles[i];
         final extension = file.path.split('.').last;
         final path = 'reports/$userId/${DateTime.now().millisecondsSinceEpoch}_$i.$extension';
-        
+
         await _supabase.storage.from('scam-evidence').upload(path, file);
         final url = _supabase.storage.from('scam-evidence').getPublicUrl(path);
         uploadedUrls.add(url);
@@ -25,7 +29,12 @@ class ReportService {
     // 2. Prepare data
     final data = report.toJson();
     data['reporter_id'] = userId;
-    
+
+    final linkedThreatRecordId = threatRecordId?.trim() ?? '';
+    if (linkedThreatRecordId.isNotEmpty) {
+      data['threat_record_id'] = linkedThreatRecordId;
+    }
+
     // Merge uploaded URLs
     final List<String> finalUrls = [...report.evidenceUrls, ...uploadedUrls];
     data['evidence_urls'] = finalUrls;

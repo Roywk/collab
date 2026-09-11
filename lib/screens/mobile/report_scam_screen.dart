@@ -8,13 +8,32 @@ import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
 
 class ReportScamScreen extends StatefulWidget {
-  const ReportScamScreen({super.key});
+  const ReportScamScreen({
+    this.initialCategory,
+    this.initialDescription,
+    this.prefillSource,
+    this.initialThreatRecordId,
+    super.key,
+  });
+
+  final String? initialCategory;
+  final String? initialDescription;
+  final String? prefillSource;
+  final String? initialThreatRecordId;
 
   @override
   State<ReportScamScreen> createState() => _ReportScamScreenState();
 }
 
 class _ReportScamScreenState extends State<ReportScamScreen> {
+  static const _categories = [
+    'Taxi Touts',
+    'Fake Tickets',
+    'Overcharging',
+    'Pickpocket',
+    'Other',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
   final _amountController = TextEditingController();
@@ -28,9 +47,26 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
 
   bool get _isDirty =>
       _descController.text.isNotEmpty ||
-      _amountController.text.isNotEmpty ||
-      _customCategoryController.text.isNotEmpty ||
-      _evidenceFiles.isNotEmpty;
+          _amountController.text.isNotEmpty ||
+          _customCategoryController.text.isNotEmpty ||
+          _evidenceFiles.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final initialCategory = widget.initialCategory?.trim() ?? '';
+    if (initialCategory.isNotEmpty) {
+      if (_categories.contains(initialCategory)) {
+        _category = initialCategory;
+      } else {
+        _category = 'Other';
+        _customCategoryController.text = initialCategory;
+      }
+    }
+
+    _descController.text = widget.initialDescription?.trim() ?? '';
+  }
 
   @override
   void dispose() {
@@ -213,7 +249,11 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
         isAnonymous: _isAnonymous,
       );
 
-      await ReportService().submitReport(report, evidenceFiles: _evidenceFiles);
+      await ReportService().submitReport(
+        report,
+        evidenceFiles: _evidenceFiles,
+        threatRecordId: widget.initialThreatRecordId,
+      );
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
@@ -226,7 +266,7 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
       if (errorMsg.contains('admin notes') ||
           errorMsg.contains('admin_notes')) {
         errorMsg =
-            'Database mapping error: Column "admin_notes" not found. Please notify the system administrator.';
+        'Database mapping error: Column "admin_notes" not found. Please notify the system administrator.';
       }
 
       await _showResultDialog(success: false, message: errorMsg);
@@ -250,6 +290,41 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if ((widget.prefillSource ?? '').trim().isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.blueSoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.blue.withAlpha(55)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_outlined,
+                        color: AppColors.blue,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Information was prefilled from '
+                              '${widget.prefillSource}. Review and add details '
+                              'before submitting.',
+                          style: const TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 12,
+                            height: 1.4,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               SwitchListTile(
                 title: const Text(
                   'Report Anonymously',
@@ -267,16 +342,9 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _category,
-                items:
-                    [
-                          'Taxi Touts',
-                          'Fake Tickets',
-                          'Overcharging',
-                          'Pickpocket',
-                          'Other',
-                        ]
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
+                items: _categories
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
                 onChanged: _isSubmitting
                     ? null
                     : (v) => setState(() => _category = v!),
@@ -296,7 +364,7 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) =>
-                      (_category == 'Other' && (v == null || v.isEmpty))
+                  (_category == 'Other' && (v == null || v.isEmpty))
                       ? 'Please specify'
                       : null,
                 ),
@@ -430,20 +498,20 @@ class _ReportScamScreenState extends State<ReportScamScreen> {
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                       : const Text(
-                          'Submit Scam Report',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
+                    'Submit Scam Report',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
