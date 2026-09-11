@@ -99,7 +99,7 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                     ),
                     title: const Text('Challenge already completed'),
                     content: const Text(
-                      'This challenge has already been done. Are you sure you want to try it again? Complete it correctly to earn the daily practice bonus.',
+                      'This challenge has already been done. Are you sure you want to try it again? XP can be earned from this scenario only once per day.',
                     ),
                     actions: [
                       TextButton(

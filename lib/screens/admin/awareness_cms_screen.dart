@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
@@ -44,19 +47,66 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
   late final AwarenessAdminRepository _cmsRepository;
   late Future<AwarenessCmsSnapshot> _snapshot;
   String _filter = 'all';
+  AwarenessContentType? _typeFilter;
+  RealtimeChannel? _realtimeChannel;
+  Timer? _reloadDebounce;
 
   @override
   void initState() {
     super.initState();
     _cmsRepository = AwarenessAdminRepository(client: widget.repository.client);
     _refresh();
+    _subscribeToChanges();
   }
 
-  void _refresh() => _snapshot = _cmsRepository.getSnapshot();
+  void _subscribeToChanges() {
+    var channel = widget.repository.client.channel(
+      'awareness-cms-${identityHashCode(this)}',
+    );
+    for (final table in const [
+      'learning_lessons',
+      'quiz_sets',
+      'quiz_questions',
+      'scenarios',
+      'reward_partners',
+      'reward_vouchers',
+      'voucher_codes',
+    ]) {
+      channel = channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => _scheduleRealtimeReload(),
+      );
+    }
+    _realtimeChannel = channel..subscribe();
+  }
+
+  void _scheduleRealtimeReload() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) unawaited(_reload());
+    });
+  }
+
+  @override
+  void dispose() {
+    _reloadDebounce?.cancel();
+    final channel = _realtimeChannel;
+    if (channel != null) {
+      unawaited(widget.repository.client.removeChannel(channel));
+    }
+    super.dispose();
+  }
+
+  void _refresh() {
+    _snapshot = _cmsRepository.getSnapshot();
+  }
 
   Future<void> _reload() async {
-    setState(_refresh);
-    await _snapshot;
+    final nextSnapshot = _cmsRepository.getSnapshot();
+    if (mounted) setState(() => _snapshot = nextSnapshot);
+    await nextSnapshot;
   }
 
   Future<void> _openEditor(
@@ -113,6 +163,20 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Status could not be updated: $error')),
       );
+    }
+  }
+
+  Future<void> _deleteContent(AwarenessContentSummary item) async {
+    final approved = await _confirm(
+      'Delete ${item.type.label.toLowerCase()} permanently?',
+      '“${item.title}” and its editable content will be removed. Published content must be archived first.',
+    );
+    if (!approved || !mounted) return;
+    try {
+      await _cmsRepository.deleteContent(item);
+      if (mounted) await _reload();
+    } catch (error) {
+      if (mounted) _showError('Content could not be deleted', error);
     }
   }
 
@@ -245,9 +309,11 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
           return _CmsError(error: snapshot.error, onRetry: _reload);
         }
         final data = snapshot.data!;
-        final items = _filter == 'all'
-            ? data.contents
-            : data.contents.where((item) => item.status == _filter).toList();
+        final items = data.contents.where((item) {
+          final matchesStatus = _filter == 'all' || item.status == _filter;
+          final matchesType = _typeFilter == null || item.type == _typeFilter;
+          return matchesStatus && matchesType;
+        }).toList();
         return RefreshIndicator(
           onRefresh: _reload,
           child: ListView(
@@ -294,7 +360,10 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Expanded(
                           child: Column(
@@ -393,6 +462,31 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                           onChanged: (value) =>
                               setState(() => _filter = value ?? 'all'),
                         ),
+                        const SizedBox(width: 12),
+                        DropdownButton<AwarenessContentType?>(
+                          value: _typeFilter,
+                          underline: const SizedBox.shrink(),
+                          items: const [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text('All content types'),
+                            ),
+                            DropdownMenuItem(
+                              value: AwarenessContentType.lesson,
+                              child: Text('Lessons'),
+                            ),
+                            DropdownMenuItem(
+                              value: AwarenessContentType.quiz,
+                              child: Text('Quizzes'),
+                            ),
+                            DropdownMenuItem(
+                              value: AwarenessContentType.scenario,
+                              child: Text('Scenarios'),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _typeFilter = value),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -409,6 +503,7 @@ class _AwarenessCmsScreenState extends State<AwarenessCmsScreen> {
                           item: item,
                           onEdit: () => _openEditor(item.type, item),
                           onStatus: (status) => _changeStatus(item, status),
+                          onDelete: () => _deleteContent(item),
                         ),
                       ),
                   ],
@@ -555,10 +650,12 @@ class _ContentRow extends StatelessWidget {
     required this.item,
     required this.onEdit,
     required this.onStatus,
+    required this.onDelete,
   });
   final AwarenessContentSummary item;
   final VoidCallback onEdit;
   final ValueChanged<String> onStatus;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 9),
@@ -608,10 +705,21 @@ class _ContentRow extends StatelessWidget {
         PopupMenuButton<String>(
           tooltip: 'Change status',
           onSelected: onStatus,
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'published', child: Text('Publish')),
-            PopupMenuItem(value: 'draft', child: Text('Move to draft')),
-            PopupMenuItem(value: 'archived', child: Text('Archive')),
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'published', child: Text('Publish')),
+            const PopupMenuItem(value: 'draft', child: Text('Move to draft')),
+            const PopupMenuItem(value: 'archived', child: Text('Archive')),
+            if (!item.isPublished)
+              PopupMenuItem(
+                onTap: onDelete,
+                child: const Row(
+                  children: [
+                    Icon(Icons.delete_outline, color: AppColors.red, size: 18),
+                    SizedBox(width: 8),
+                    Text('Delete permanently'),
+                  ],
+                ),
+              ),
           ],
         ),
       ],

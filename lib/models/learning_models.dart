@@ -12,6 +12,7 @@ class LearningLesson {
   final double? latitude;
   final double? longitude;
   final bool isLocationBased;
+  final int hotspotRadiusMeters;
   final bool isCompleted;
   final int xpReward;
   final String? hotspotLabel;
@@ -30,6 +31,7 @@ class LearningLesson {
     this.latitude,
     this.longitude,
     this.isLocationBased = false,
+    this.hotspotRadiusMeters = 250,
     this.isCompleted = false,
     this.xpReward = 20,
     this.hotspotLabel,
@@ -107,6 +109,32 @@ class QuizQuestion {
     this.imageUrl,
     this.timeLimitSeconds = 15,
   });
+}
+
+class LearningQuiz {
+  const LearningQuiz({
+    required this.id,
+    required this.referenceCode,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.difficulty,
+    required this.xpReward,
+    required this.questions,
+    this.isCompleted = false,
+    this.completedToday = false,
+  });
+
+  final String id;
+  final String referenceCode;
+  final String title;
+  final String description;
+  final String category;
+  final String difficulty;
+  final int xpReward;
+  final List<QuizQuestion> questions;
+  final bool isCompleted;
+  final bool completedToday;
 }
 
 class RewardVoucher {

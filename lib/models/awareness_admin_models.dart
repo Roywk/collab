@@ -131,6 +131,7 @@ class AdminLessonDraft {
     this.hotspotLabel,
     this.latitude,
     this.longitude,
+    this.hotspotRadiusMeters = 250,
     this.isLocationBased = false,
   });
 
@@ -148,20 +149,40 @@ class AdminLessonDraft {
   final String? hotspotLabel;
   final double? latitude;
   final double? longitude;
+  final int hotspotRadiusMeters;
   final bool isLocationBased;
 }
 
 class AdminQuizDraft {
   const AdminQuizDraft({
     this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.difficulty,
+    required this.xpReward,
+    required this.status,
+    required this.questions,
+  });
+
+  final String? id;
+  final String title;
+  final String description;
+  final String category;
+  final String difficulty;
+  final int xpReward;
+  final String status;
+  final List<AdminQuizQuestionDraft> questions;
+}
+
+class AdminQuizQuestionDraft {
+  const AdminQuizQuestionDraft({
+    this.id,
     required this.question,
     required this.options,
     required this.correctIndex,
     required this.explanation,
-    required this.category,
-    required this.difficulty,
     required this.timeLimitSeconds,
-    required this.status,
     this.imageUrl,
   });
 
@@ -170,10 +191,7 @@ class AdminQuizDraft {
   final List<String> options;
   final int correctIndex;
   final String explanation;
-  final String category;
-  final String difficulty;
   final int timeLimitSeconds;
-  final String status;
   final String? imageUrl;
 }
 

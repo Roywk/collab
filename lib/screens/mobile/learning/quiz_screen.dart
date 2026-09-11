@@ -10,11 +10,15 @@ class QuizScreen extends StatefulWidget {
   const QuizScreen({
     required this.repository,
     required this.questions,
+    required this.quizSetId,
+    required this.quizTitle,
     super.key,
   });
 
   final LearningRepository repository;
   final List<QuizQuestion> questions;
+  final String quizSetId;
+  final String quizTitle;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -90,6 +94,7 @@ class _QuizScreenState extends State<QuizScreen> {
       var xpAwarded = 0;
       try {
         xpAwarded = await widget.repository.submitQuizAttempt(
+          quizSetId: widget.quizSetId,
           score: correctAnswers,
           total: questions.length,
           timeTaken: _stopwatch.elapsed,
@@ -175,7 +180,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final progress = (currentQuestionIndex + 1) / questions.length;
 
     return MobileShell(
-      title: 'Fraud Awareness Quiz',
+      title: widget.quizTitle,
       onBack: () => Navigator.pop(context),
       currentNavigationIndex: 5,
       child: ListView(

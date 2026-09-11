@@ -106,9 +106,7 @@ class QuizResultScreen extends StatelessWidget {
                   ? '+$xpEarned XP EARNED!'
                   : !isPassed
                   ? 'NO XP · 70% REQUIRED TO GRADUATE'
-                  : score == total
-                  ? 'PERFECT PRACTICE · DAILY BONUS ALREADY EARNED'
-                  : 'BEST RESULT ALREADY REWARDED',
+                  : 'PASSED · TODAY’S XP ALREADY EARNED',
               style: const TextStyle(
                 color: AppColors.green,
                 fontWeight: FontWeight.w800,

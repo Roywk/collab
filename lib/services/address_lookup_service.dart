@@ -47,6 +47,52 @@ class AddressLookupService {
     return result.future;
   }
 
+  Future<String?> areaFromCoordinates({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+      'format': 'jsonv2',
+      'lat': latitude.toString(),
+      'lon': longitude.toString(),
+      'zoom': '14',
+      'addressdetails': '1',
+      'accept-language': 'en',
+    });
+    try {
+      final response = await _client
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              if (!kIsWeb) 'User-Agent': 'Visit1MY/1.0',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final payload = jsonDecode(utf8.decode(response.bodyBytes));
+      if (payload is! Map<String, dynamic>) return null;
+      final address = payload['address'];
+      if (address is Map<String, dynamic>) {
+        for (final key in const [
+          'suburb',
+          'neighbourhood',
+          'quarter',
+          'city_district',
+          'town',
+          'city',
+        ]) {
+          final value = address[key]?.toString().trim();
+          if (value != null && value.isNotEmpty) return value;
+        }
+      }
+      final display = payload['display_name']?.toString().trim();
+      return display?.split(',').first.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<String?> _performLookup({
     required double latitude,
     required double longitude,

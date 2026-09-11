@@ -94,7 +94,7 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
               child: Text(
                 earnedXp > 0
                     ? '+$earnedXp XP EARNED!'
-                    : 'PRACTICE COMPLETE · DAILY BONUS ALREADY EARNED',
+                    : 'PRACTICE COMPLETE · TODAY’S XP ALREADY EARNED',
                 style: const TextStyle(
                   color: AppColors.green,
                   fontWeight: FontWeight.w800,

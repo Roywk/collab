@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/awareness_admin_models.dart';
@@ -11,7 +13,7 @@ class AwarenessAdminRepository {
   Future<AwarenessCmsSnapshot> getSnapshot() async {
     final responses = await Future.wait([
       client.from('learning_lessons').select(),
-      client.from('quiz_questions').select(),
+      client.from('quiz_sets').select(),
       client.from('scenarios').select(),
       client
           .from('reward_vouchers')
@@ -26,7 +28,7 @@ class AwarenessAdminRepository {
         (row) => _content(row, AwarenessContentType.lesson, row['title']),
       ),
       ...(responses[1] as List).map(
-        (row) => _content(row, AwarenessContentType.quiz, row['question']),
+        (row) => _content(row, AwarenessContentType.quiz, row['title']),
       ),
       ...(responses[2] as List).map(
         (row) => _content(row, AwarenessContentType.scenario, row['title']),
@@ -161,7 +163,7 @@ class AwarenessAdminRepository {
       id: row['id'].toString(),
       referenceCode: switch (type) {
         AwarenessContentType.lesson => row['lesson_code'] ?? '',
-        AwarenessContentType.quiz => row['question_code'] ?? '',
+        AwarenessContentType.quiz => row['quiz_code'] ?? '',
         AwarenessContentType.scenario => row['scenario_code'] ?? '',
       },
       title: title?.toString() ?? 'Untitled',
@@ -193,6 +195,7 @@ class AwarenessAdminRepository {
       hotspotLabel: row['hotspot_label'],
       latitude: (row['latitude'] as num?)?.toDouble(),
       longitude: (row['longitude'] as num?)?.toDouble(),
+      hotspotRadiusMeters: row['hotspot_radius_meters'] ?? 250,
       isLocationBased: row['is_location_based'] ?? false,
     );
   }
@@ -213,6 +216,7 @@ class AwarenessAdminRepository {
       'hotspot_label': _nullable(draft.hotspotLabel),
       'latitude': draft.latitude,
       'longitude': draft.longitude,
+      'hotspot_radius_meters': draft.hotspotRadiusMeters,
       'is_location_based': draft.isLocationBased,
       'published_at': draft.status == 'published'
           ? DateTime.now().toIso8601String()
@@ -228,45 +232,68 @@ class AwarenessAdminRepository {
 
   Future<AdminQuizDraft> getQuiz(String id) async {
     final row = await client
-        .from('quiz_questions')
-        .select()
+        .from('quiz_sets')
+        .select('*,quiz_questions(*)')
         .eq('id', id)
         .single();
+    final questionRows = List<dynamic>.from(row['quiz_questions'] ?? const [])
+      ..sort(
+        (a, b) => ((a['question_order'] ?? a['sort_order'] ?? 0) as int)
+            .compareTo((b['question_order'] ?? b['sort_order'] ?? 0) as int),
+      );
     return AdminQuizDraft(
       id: id,
-      question: row['question'] ?? '',
-      options: List<String>.from(row['options'] ?? const []),
-      correctIndex: row['correct_index'] ?? 0,
-      explanation: row['explanation'] ?? '',
+      title: row['title'] ?? '',
+      description: row['description'] ?? '',
       category: row['category'] ?? 'General',
       difficulty: row['difficulty'] ?? 'Beginner',
-      timeLimitSeconds: row['time_limit_seconds'] ?? 15,
+      xpReward: row['xp_reward'] ?? 80,
       status: row['status'] ?? 'draft',
-      imageUrl: row['image_url'],
+      questions: questionRows
+          .map(
+            (question) => AdminQuizQuestionDraft(
+              id: question['id']?.toString(),
+              question: question['question'] ?? '',
+              options: List<String>.from(question['options'] ?? const []),
+              correctIndex: question['correct_index'] ?? 0,
+              explanation: question['explanation'] ?? '',
+              timeLimitSeconds: question['time_limit_seconds'] ?? 15,
+              imageUrl: question['image_url'],
+            ),
+          )
+          .toList(),
     );
   }
 
   Future<void> saveQuiz(AdminQuizDraft draft) async {
-    final data = {
-      'question': draft.question,
-      'options': draft.options,
-      'correct_index': draft.correctIndex,
-      'explanation': draft.explanation,
-      'category': draft.category,
-      'difficulty': draft.difficulty,
-      'time_limit_seconds': draft.timeLimitSeconds,
-      'status': draft.status,
-      'is_active': draft.status == 'published',
-      'image_url': _nullable(draft.imageUrl),
-      'published_at': draft.status == 'published'
-          ? DateTime.now().toIso8601String()
-          : null,
-      'updated_at': DateTime.now().toIso8601String(),
-    };
-    if (draft.id == null) {
-      await client.from('quiz_questions').insert(data);
-    } else {
-      await client.from('quiz_questions').update(data).eq('id', draft.id!);
+    final result = await client.rpc(
+      'admin_save_quiz_set',
+      params: {
+        'quiz_payload': {
+          'id': draft.id,
+          'title': draft.title,
+          'description': draft.description,
+          'category': draft.category,
+          'difficulty': draft.difficulty,
+          'xp_reward': draft.xpReward,
+          'status': draft.status,
+          'questions': draft.questions
+              .map(
+                (question) => {
+                  'question': question.question,
+                  'options': question.options,
+                  'correct_index': question.correctIndex,
+                  'explanation': question.explanation,
+                  'time_limit_seconds': question.timeLimitSeconds,
+                  'image_url': _nullable(question.imageUrl),
+                },
+              )
+              .toList(),
+        },
+      },
+    );
+    if (result == null) {
+      throw const PostgrestException(message: 'Quiz could not be saved.');
     }
   }
 
@@ -332,9 +359,16 @@ class AwarenessAdminRepository {
     AwarenessContentSummary item,
     String status,
   ) async {
+    if (item.type == AwarenessContentType.quiz) {
+      await client.rpc(
+        'set_quiz_set_status',
+        params: {'target_quiz_set_id': item.id, 'target_status': status},
+      );
+      return;
+    }
     final table = switch (item.type) {
       AwarenessContentType.lesson => 'learning_lessons',
-      AwarenessContentType.quiz => 'quiz_questions',
+      AwarenessContentType.quiz => throw StateError('Handled above'),
       AwarenessContentType.scenario => 'scenarios',
     };
     await client
@@ -351,6 +385,18 @@ class AwarenessAdminRepository {
 
   Future<void> archiveContent(AwarenessContentSummary item) =>
       setContentStatus(item, 'archived');
+
+  Future<void> deleteContent(AwarenessContentSummary item) async {
+    if (item.status == 'published') {
+      throw StateError('Published content must be archived before deletion.');
+    }
+    final table = switch (item.type) {
+      AwarenessContentType.lesson => 'learning_lessons',
+      AwarenessContentType.quiz => 'quiz_sets',
+      AwarenessContentType.scenario => 'scenarios',
+    };
+    await client.from(table).delete().eq('id', item.id);
+  }
 
   Future<void> saveVoucher(AdminVoucherDraft draft) async {
     final codes = draft.codes
@@ -460,6 +506,30 @@ class AwarenessAdminRepository {
   }
 
   Future<void> archiveVoucher(String id) => setVoucherStatus(id, 'archived');
+
+  Future<String> uploadAwarenessMedia({
+    required Uint8List bytes,
+    required String fileName,
+    required String folder,
+    required String contentType,
+  }) async {
+    const bucket = 'awareness-media';
+    final safeName = fileName.toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9._-]'),
+      '-',
+    );
+    final userId = client.auth.currentUser?.id ?? 'admin';
+    final path =
+        '$folder/$userId/${DateTime.now().microsecondsSinceEpoch}-$safeName';
+    await client.storage
+        .from(bucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    return client.storage.from(bucket).getPublicUrl(path);
+  }
 
   String? _nullable(String? value) {
     final clean = value?.trim();

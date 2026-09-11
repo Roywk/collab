@@ -88,6 +88,7 @@ class LearningRepository {
         latitude: item['latitude']?.toDouble(),
         longitude: item['longitude']?.toDouble(),
         isLocationBased: item['is_location_based'] ?? false,
+        hotspotRadiusMeters: item['hotspot_radius_meters'] ?? 250,
         isCompleted: isCompleted,
         xpReward: item['xp_reward'] ?? 20,
         hotspotLabel: item['hotspot_label'],
@@ -189,33 +190,65 @@ class LearningRepository {
     }
   }
 
-  Future<List<QuizQuestion>> getQuizQuestions() async {
+  Future<List<LearningQuiz>> getQuizSets() async {
     final response = await client
-        .from('quiz_questions')
-        .select('*')
+        .from('quiz_sets')
+        .select(
+          '*,quiz_questions(*),quiz_attempts(user_id,passed,completed_at)',
+        )
         .eq('is_active', true)
-        .limit(10);
+        .eq('status', 'published')
+        .order('sort_order');
 
     final List<dynamic> data = response as List<dynamic>;
-
     return data
-        .map(
-          (q) => QuizQuestion(
-            id: q['id'].toString(),
-            referenceCode: q['question_code'] ?? '',
-            question: q['question'],
-            options: List<String>.from(q['options']),
-            correctOptionIndex: q['correct_index'],
-            explanation: q['explanation'],
-            category: q['category'] ?? 'General',
-            imageUrl: q['image_url'],
-            timeLimitSeconds: q['time_limit_seconds'] ?? 15,
-          ),
-        )
+        .map((set) {
+          final questionRows =
+              List<dynamic>.from(set['quiz_questions'] ?? const [])..sort(
+                (a, b) => ((a['question_order'] ?? a['sort_order'] ?? 0) as int)
+                    .compareTo(
+                      (b['question_order'] ?? b['sort_order'] ?? 0) as int,
+                    ),
+              );
+          final attempts = List<dynamic>.from(set['quiz_attempts'] ?? const []);
+          final passedAttempts = attempts
+              .where((attempt) => attempt['passed'] == true)
+              .toList();
+          return LearningQuiz(
+            id: set['id'].toString(),
+            referenceCode: set['quiz_code'] ?? '',
+            title: set['title'] ?? 'Spot the Scam',
+            description: set['description'] ?? '',
+            category: set['category'] ?? 'General',
+            difficulty: set['difficulty'] ?? 'Beginner',
+            xpReward: set['xp_reward'] ?? 80,
+            isCompleted: passedAttempts.isNotEmpty,
+            completedToday: passedAttempts.any(
+              (attempt) => _isMalaysiaToday(attempt['completed_at']),
+            ),
+            questions: questionRows
+                .map(
+                  (question) => QuizQuestion(
+                    id: question['id'].toString(),
+                    referenceCode: question['question_code'] ?? '',
+                    question: question['question'],
+                    options: List<String>.from(question['options']),
+                    correctOptionIndex: question['correct_index'],
+                    explanation: question['explanation'],
+                    category: set['category'] ?? 'General',
+                    imageUrl: question['image_url'],
+                    timeLimitSeconds: question['time_limit_seconds'] ?? 15,
+                  ),
+                )
+                .toList(),
+          );
+        })
+        .where((quiz) => quiz.questions.isNotEmpty)
         .toList();
   }
 
   Future<int> submitQuizAttempt({
+    required String quizSetId,
     required int score,
     required int total,
     required Duration timeTaken,
@@ -224,8 +257,9 @@ class LearningRepository {
     if (userId == null || total == 0) return 0;
 
     final result = await client.rpc(
-      'record_quiz_attempt',
+      'record_quiz_set_attempt',
       params: {
+        'target_quiz_set_id': quizSetId,
         'answer_score': score,
         'question_total': total,
         'elapsed_seconds': timeTaken.inSeconds,
@@ -299,7 +333,7 @@ class LearningRepository {
     final results = await Future.wait([
       client.from('learning_lessons').select('id').eq('is_active', true),
       client.from('scenarios').select('id').eq('is_active', true),
-      client.from('quiz_questions').select('id').eq('is_active', true),
+      client.from('quiz_sets').select('id').eq('is_active', true),
       client.from('reward_vouchers').select('id').eq('is_active', true),
     ]);
     return LearningOverview(
@@ -308,5 +342,15 @@ class LearningRepository {
       questions: (results[2] as List).length,
       rewards: (results[3] as List).length,
     );
+  }
+
+  bool _isMalaysiaToday(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return false;
+    final malaysiaNow = DateTime.now().toUtc().add(const Duration(hours: 8));
+    final malaysiaValue = parsed.toUtc().add(const Duration(hours: 8));
+    return malaysiaNow.year == malaysiaValue.year &&
+        malaysiaNow.month == malaysiaValue.month &&
+        malaysiaNow.day == malaysiaValue.day;
   }
 }

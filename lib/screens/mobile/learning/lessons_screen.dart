@@ -158,7 +158,7 @@ class _LessonsScreenState extends State<LessonsScreen> {
                   ),
                   title: const Text('Lesson already completed'),
                   content: const Text(
-                    'Are you sure you want to study this lesson again? A small practice bonus is available once per day.',
+                    'Are you sure you want to study this lesson again? XP can be earned from this lesson only once per day.',
                   ),
                   actions: [
                     TextButton(

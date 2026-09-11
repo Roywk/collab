@@ -36,7 +36,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             content: Text(
               xpAwarded > 0
                   ? 'Lesson completed! +$xpAwarded XP earned.'
-                  : 'Review completed. Today’s practice bonus was already earned.',
+                  : 'Review completed. XP for this lesson was already earned today.',
             ),
           ),
         );

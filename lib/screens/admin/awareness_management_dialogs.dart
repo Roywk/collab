@@ -79,11 +79,12 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
     title: Text(
       widget.partner == null ? 'Add reward partner' : 'Review reward partner',
     ),
     content: SizedBox(
-      width: 620,
+      width: 700,
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -94,16 +95,19 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
                 controller: _legal,
                 label: 'Registered legal name',
                 required: true,
+                minimumLength: 3,
               ),
               _Field(
                 controller: _display,
                 label: 'Public display name',
                 required: true,
+                minimumLength: 2,
               ),
               _Field(
                 controller: _registration,
                 label: 'SSM / registration number',
                 required: true,
+                minimumLength: 3,
               ),
               Row(
                 children: [
@@ -170,8 +174,16 @@ class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
                 required: true,
                 email: true,
               ),
-              _Field(controller: _phone, label: 'Business contact phone'),
-              _Field(controller: _website, label: 'Official website'),
+              _Field(
+                controller: _phone,
+                label: 'Business contact phone',
+                phone: true,
+              ),
+              _Field(
+                controller: _website,
+                label: 'Official website',
+                url: true,
+              ),
               _Field(
                 controller: _notes,
                 label: 'Verification evidence and approval notes',
@@ -256,6 +268,7 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    if (!_validUntil.isAfter(DateTime.now())) return;
     final partner = widget.partners.firstWhere((item) => item.id == _partnerId);
     Navigator.pop(
       context,
@@ -329,14 +342,8 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
                   ),
                 ],
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Valid until',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(DateFormat('dd MMM yyyy').format(_validUntil)),
-                trailing: const Icon(Icons.calendar_month_outlined),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
                 onTap: () async {
                   final date = await showDatePicker(
                     context: context,
@@ -352,6 +359,14 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
                     );
                   }
                 },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Valid until',
+                    prefixIcon: Icon(Icons.calendar_month_outlined),
+                    suffixIcon: Icon(Icons.arrow_drop_down),
+                  ),
+                  child: Text(DateFormat('dd MMM yyyy').format(_validUntil)),
+                ),
               ),
               DropdownButtonFormField<String>(
                 initialValue: _status,
@@ -374,6 +389,7 @@ class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
                 label: 'Unique voucher codes — one per line',
                 required: _status == 'published',
                 lines: 5,
+                voucherCodes: true,
               ),
               const Align(
                 alignment: Alignment.centerLeft,
@@ -409,6 +425,10 @@ class _Field extends StatelessWidget {
     this.email = false,
     this.number = false,
     this.lines = 1,
+    this.minimumLength = 0,
+    this.phone = false,
+    this.url = false,
+    this.voucherCodes = false,
   });
   final TextEditingController controller;
   final String label;
@@ -416,6 +436,10 @@ class _Field extends StatelessWidget {
   final bool email;
   final bool number;
   final int lines;
+  final int minimumLength;
+  final bool phone;
+  final bool url;
+  final bool voucherCodes;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 10),
@@ -427,16 +451,52 @@ class _Field extends StatelessWidget {
           ? TextInputType.number
           : email
           ? TextInputType.emailAddress
+          : lines > 1
+          ? TextInputType.multiline
           : TextInputType.text,
+      textInputAction: lines > 1
+          ? TextInputAction.newline
+          : TextInputAction.next,
       decoration: InputDecoration(labelText: label),
       validator: (value) {
         final text = value?.trim() ?? '';
         if (required && text.isEmpty) return '$label is required.';
+        if (text.isNotEmpty && text.length < minimumLength) {
+          return '$label must contain at least $minimumLength characters.';
+        }
         if (email && text.isNotEmpty && !text.contains('@')) {
           return 'Enter a valid email address.';
         }
         if (number && (int.tryParse(text) ?? 0) <= 0) {
           return 'Enter a positive amount.';
+        }
+        if (phone &&
+            text.isNotEmpty &&
+            !RegExp(r'^\+?[0-9 ()-]{7,20}$').hasMatch(text)) {
+          return 'Enter a valid business phone number.';
+        }
+        if (url && text.isNotEmpty) {
+          final uri = Uri.tryParse(text);
+          if (uri == null ||
+              !{'http', 'https'}.contains(uri.scheme) ||
+              uri.host.isEmpty) {
+            return 'Enter a complete http:// or https:// URL.';
+          }
+        }
+        if (voucherCodes && text.isNotEmpty) {
+          final codes = text
+              .split(RegExp(r'[\n,;]+'))
+              .map((code) => code.trim().toUpperCase())
+              .where((code) => code.isNotEmpty)
+              .toList();
+          if (codes.toSet().length != codes.length) {
+            return 'Remove duplicate voucher codes.';
+          }
+          if (codes.any(
+            (code) => !RegExp(r'^[A-Z0-9][A-Z0-9_-]{3,39}$').hasMatch(code),
+          )) {
+            return 'Use 4–40 characters: letters, numbers, hyphens or underscores.';
+          }
         }
         return null;
       },

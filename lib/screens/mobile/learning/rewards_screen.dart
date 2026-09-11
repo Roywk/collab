@@ -471,22 +471,26 @@ class _RewardCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      voucher.isClaimed
-                          ? 'Already redeemed'
-                          : !voucher.isAvailable
-                          ? 'Currently out of stock'
-                          : voucher.isUnlocked
-                          ? 'Ready to redeem'
-                          : 'Need $remaining more XP',
-                      style: TextStyle(
-                        color: voucher.isUnlocked && voucher.isAvailable
-                            ? AppColors.green
-                            : AppColors.slate,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: Text(
+                        voucher.isClaimed
+                            ? 'Already redeemed'
+                            : !voucher.isAvailable
+                            ? 'Currently out of stock'
+                            : voucher.isUnlocked
+                            ? 'Ready to redeem'
+                            : 'Need $remaining more XP',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: voucher.isUnlocked && voucher.isAvailable
+                              ? AppColors.green
+                              : AppColors.slate,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       'Costs ${voucher.requiredXp} XP',
                       style: const TextStyle(

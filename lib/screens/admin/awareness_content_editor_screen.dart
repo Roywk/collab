@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/awareness_admin_repository.dart';
 import '../../models/awareness_admin_models.dart';
+import '../../services/address_lookup_service.dart';
 import 'admin_shell.dart';
 
 class AwarenessContentEditorScreen extends StatefulWidget {
@@ -33,6 +37,7 @@ class _AwarenessContentEditorScreenState
   final _hotspot = TextEditingController();
   final _latitude = TextEditingController();
   final _longitude = TextEditingController();
+  final _hotspotRadius = TextEditingController(text: '250');
   final _readTime = TextEditingController(text: '3 min');
   final _xp = TextEditingController(text: '20');
   final _timeLimit = TextEditingController(text: '15');
@@ -41,6 +46,7 @@ class _AwarenessContentEditorScreenState
     4,
     (_) => TextEditingController(),
   );
+  final List<_QuizQuestionFields> _quizQuestions = [_QuizQuestionFields()];
 
   late final Future<void> _loadFuture;
   String _category = 'Transport Scams';
@@ -49,6 +55,7 @@ class _AwarenessContentEditorScreenState
   bool _locationBased = false;
   int _correctIndex = 0;
   bool _saving = false;
+  bool _uploading = false;
   String? _error;
   String _scenarioMediaType = 'none';
 
@@ -74,6 +81,7 @@ class _AwarenessContentEditorScreenState
     final id = widget.item?.id;
     if (id == null) {
       if (widget.type == AwarenessContentType.scenario) _xp.text = '50';
+      if (widget.type == AwarenessContentType.quiz) _xp.text = '80';
       return;
     }
     switch (widget.type) {
@@ -87,6 +95,7 @@ class _AwarenessContentEditorScreenState
         _hotspot.text = item.hotspotLabel ?? '';
         _latitude.text = item.latitude?.toString() ?? '';
         _longitude.text = item.longitude?.toString() ?? '';
+        _hotspotRadius.text = '${item.hotspotRadiusMeters}';
         _readTime.text = item.readTime;
         _xp.text = '${item.xpReward}';
         _category = item.category;
@@ -96,17 +105,19 @@ class _AwarenessContentEditorScreenState
         break;
       case AwarenessContentType.quiz:
         final item = await widget.repository.getQuiz(id);
-        _title.text = item.question;
-        _secondary.text = item.explanation;
-        _image.text = item.imageUrl ?? '';
-        for (var i = 0; i < item.options.length && i < _options.length; i++) {
-          _options[i].text = item.options[i];
-        }
-        _correctIndex = item.correctIndex.clamp(0, 3);
-        _timeLimit.text = '${item.timeLimitSeconds}';
+        _title.text = item.title;
+        _body.text = item.description;
+        _xp.text = '${item.xpReward}';
         _category = item.category;
         _difficulty = item.difficulty;
         _status = item.status;
+        for (final question in _quizQuestions) {
+          question.dispose();
+        }
+        _quizQuestions
+          ..clear()
+          ..addAll(item.questions.map(_QuizQuestionFields.fromDraft));
+        if (_quizQuestions.isEmpty) _quizQuestions.add(_QuizQuestionFields());
         break;
       case AwarenessContentType.scenario:
         final item = await widget.repository.getScenario(id);
@@ -140,6 +151,7 @@ class _AwarenessContentEditorScreenState
       _hotspot,
       _latitude,
       _longitude,
+      _hotspotRadius,
       _readTime,
       _xp,
       _timeLimit,
@@ -147,6 +159,9 @@ class _AwarenessContentEditorScreenState
       ..._options,
     ]) {
       controller.dispose();
+    }
+    for (final question in _quizQuestions) {
+      question.dispose();
     }
     super.dispose();
   }
@@ -188,28 +203,26 @@ class _AwarenessContentEditorScreenState
               hotspotLabel: _hotspot.text.trim(),
               latitude: double.tryParse(_latitude.text.trim()),
               longitude: double.tryParse(_longitude.text.trim()),
+              hotspotRadiusMeters: int.parse(_hotspotRadius.text.trim()),
               isLocationBased: _locationBased,
             ),
           );
           break;
         case AwarenessContentType.quiz:
-          if (cleanOptions.length < 2 || _correctIndex >= cleanOptions.length) {
-            throw Exception(
-              'Add at least two options and select a valid answer.',
-            );
-          }
+          final questions = _quizQuestions
+              .map((fields) => fields.toDraft())
+              .toList();
+          if (questions.isEmpty) throw Exception('Add at least one question.');
           await widget.repository.saveQuiz(
             AdminQuizDraft(
               id: widget.item?.id,
-              question: _title.text.trim(),
-              options: cleanOptions,
-              correctIndex: _correctIndex,
-              explanation: _secondary.text.trim(),
+              title: _title.text.trim(),
+              description: _body.text.trim(),
               category: _category,
               difficulty: _difficulty,
-              timeLimitSeconds: int.parse(_timeLimit.text.trim()),
+              xpReward: int.parse(_xp.text.trim()),
               status: status,
-              imageUrl: _image.text.trim(),
+              questions: questions,
             ),
           );
           break;
@@ -253,6 +266,62 @@ class _AwarenessContentEditorScreenState
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _uploadMedia(
+    TextEditingController target, {
+    required String mediaType,
+    required String folder,
+  }) async {
+    final picker = ImagePicker();
+    final file = mediaType == 'video'
+        ? await picker.pickVideo(source: ImageSource.gallery)
+        : await picker.pickImage(source: ImageSource.gallery);
+    if (file == null || !mounted) return;
+    final extension = file.name.split('.').last.toLowerCase();
+    final allowed = mediaType == 'video'
+        ? const {'mp4'}
+        : const {'jpg', 'jpeg', 'png'};
+    if (!allowed.contains(extension)) {
+      setState(
+        () => _error = mediaType == 'video'
+            ? 'Choose an MP4 video.'
+            : 'Choose a JPG, JPEG, or PNG image.',
+      );
+      return;
+    }
+    final bytes = await file.readAsBytes();
+    final limit = mediaType == 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (bytes.length > limit) {
+      setState(
+        () => _error = mediaType == 'video'
+            ? 'Video must be 50 MB or smaller.'
+            : 'Image must be 10 MB or smaller.',
+      );
+      return;
+    }
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+    try {
+      final contentType = mediaType == 'video'
+          ? 'video/mp4'
+          : extension == 'png'
+          ? 'image/png'
+          : 'image/jpeg';
+      final url = await widget.repository.uploadAwarenessMedia(
+        bytes: bytes,
+        fileName: file.name,
+        folder: folder,
+        contentType: contentType,
+      );
+      if (mounted) setState(() => target.text = url);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Upload failed: $error');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -403,17 +472,40 @@ class _AwarenessContentEditorScreenState
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final wide = constraints.maxWidth >= 850;
-                      final primary = _PrimaryEditor(
-                        type: widget.type,
-                        title: _title,
-                        body: _body,
-                        secondary: _secondary,
-                        redFlags: _redFlags,
-                        options: _options,
-                        correctIndex: _correctIndex,
-                        onCorrectChanged: (value) =>
-                            setState(() => _correctIndex = value),
-                      );
+                      final Widget primary =
+                          widget.type == AwarenessContentType.quiz
+                          ? _QuizSetPrimaryEditor(
+                              title: _title,
+                              description: _body,
+                              questions: _quizQuestions,
+                              uploading: _uploading,
+                              onAddQuestion: () => setState(
+                                () => _quizQuestions.add(_QuizQuestionFields()),
+                              ),
+                              onRemoveQuestion: (index) {
+                                if (_quizQuestions.length == 1) return;
+                                setState(() {
+                                  _quizQuestions.removeAt(index).dispose();
+                                });
+                              },
+                              onChanged: () => setState(() {}),
+                              onUpload: (fields) => _uploadMedia(
+                                fields.image,
+                                mediaType: 'image',
+                                folder: 'quiz',
+                              ),
+                            )
+                          : _PrimaryEditor(
+                              type: widget.type,
+                              title: _title,
+                              body: _body,
+                              secondary: _secondary,
+                              redFlags: _redFlags,
+                              options: _options,
+                              correctIndex: _correctIndex,
+                              onCorrectChanged: (value) =>
+                                  setState(() => _correctIndex = value),
+                            );
                       final settings = _EditorSettings(
                         type: widget.type,
                         category: _category,
@@ -422,12 +514,14 @@ class _AwarenessContentEditorScreenState
                         hotspot: _hotspot,
                         latitude: _latitude,
                         longitude: _longitude,
+                        hotspotRadius: _hotspotRadius,
                         readTime: _readTime,
                         xp: _xp,
                         timeLimit: _timeLimit,
                         locationBased: _locationBased,
                         mediaType: _scenarioMediaType,
                         mediaCaption: _mediaCaption,
+                        uploading: _uploading,
                         onCategoryChanged: (value) =>
                             setState(() => _category = value),
                         onDifficultyChanged: (value) =>
@@ -436,6 +530,11 @@ class _AwarenessContentEditorScreenState
                             setState(() => _locationBased = value),
                         onMediaTypeChanged: (value) =>
                             setState(() => _scenarioMediaType = value),
+                        onUpload: (mediaType) => _uploadMedia(
+                          _image,
+                          mediaType: mediaType,
+                          folder: widget.type.name,
+                        ),
                       );
                       if (!wide) {
                         return Column(
@@ -465,6 +564,7 @@ class _AwarenessContentEditorScreenState
             currentStatus: _status,
             onCancel: () => Navigator.of(context).pop(),
             onDraft: () => _save('draft'),
+            onArchive: () => _save('archived'),
             onPublish: () => _save('published'),
           ),
         ],
@@ -506,6 +606,215 @@ class _EditorHeading extends StatelessWidget {
             ),
           ],
         ),
+      ],
+    ),
+  );
+}
+
+class _QuizSetPrimaryEditor extends StatelessWidget {
+  const _QuizSetPrimaryEditor({
+    required this.title,
+    required this.description,
+    required this.questions,
+    required this.uploading,
+    required this.onAddQuestion,
+    required this.onRemoveQuestion,
+    required this.onChanged,
+    required this.onUpload,
+  });
+
+  final TextEditingController title;
+  final TextEditingController description;
+  final List<_QuizQuestionFields> questions;
+  final bool uploading;
+  final VoidCallback onAddQuestion;
+  final ValueChanged<int> onRemoveQuestion;
+  final VoidCallback onChanged;
+  final ValueChanged<_QuizQuestionFields> onUpload;
+
+  @override
+  Widget build(BuildContext context) => _EditorCard(
+    title: 'Quiz builder',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _Label('QUIZ TITLE'),
+        TextFormField(
+          controller: title,
+          decoration: const InputDecoration(
+            hintText: 'e.g. QR Payment Safety Challenge',
+          ),
+          validator: _required,
+        ),
+        const SizedBox(height: 12),
+        const _Label('QUIZ BRIEFING'),
+        TextFormField(
+          controller: description,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'Tell travellers what this short challenge teaches.',
+          ),
+          validator: _required,
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Text(
+              '${questions.length} ${questions.length == 1 ? 'QUESTION' : 'QUESTIONS'}',
+              style: const TextStyle(
+                color: AppColors.slate,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .5,
+              ),
+            ),
+            const Spacer(),
+            FilledButton.tonalIcon(
+              onPressed: questions.length >= 20 ? null : onAddQuestion,
+              icon: const Icon(Icons.add, size: 17),
+              label: const Text('Add question'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...List.generate(questions.length, (index) {
+          final fields = questions[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.canvas,
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: const Color(0xFFEDE9FE),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Color(0xFF7C3AED),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Question card',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: questions.length == 1
+                          ? 'A quiz needs at least one question'
+                          : 'Remove question',
+                      onPressed: questions.length == 1
+                          ? null
+                          : () => onRemoveQuestion(index),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
+                TextFormField(
+                  controller: fields.question,
+                  decoration: const InputDecoration(labelText: 'Question'),
+                  validator: _required,
+                ),
+                const SizedBox(height: 9),
+                for (
+                  var optionIndex = 0;
+                  optionIndex < fields.options.length;
+                  optionIndex++
+                )
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Mark as correct answer',
+                          onPressed: () {
+                            fields.correctIndex = optionIndex;
+                            onChanged();
+                          },
+                          icon: Icon(
+                            fields.correctIndex == optionIndex
+                                ? Icons.check_circle
+                                : Icons.radio_button_off,
+                            color: fields.correctIndex == optionIndex
+                                ? AppColors.green
+                                : AppColors.slate,
+                          ),
+                        ),
+                        Expanded(
+                          child: TextFormField(
+                            controller: fields.options[optionIndex],
+                            decoration: InputDecoration(
+                              labelText:
+                                  'Answer ${String.fromCharCode(65 + optionIndex)}',
+                            ),
+                            validator: optionIndex < 2 ? _required : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                TextFormField(
+                  controller: fields.explanation,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Correct-answer explanation',
+                    hintText: 'Explain why this answer is safest.',
+                  ),
+                  validator: _required,
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      child: TextFormField(
+                        controller: fields.timeLimit,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Seconds',
+                          prefixIcon: Icon(Icons.timer_outlined, size: 17),
+                        ),
+                        validator: _positiveNumber,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        controller: fields.image,
+                        decoration: const InputDecoration(
+                          labelText: 'Image URL (optional)',
+                          prefixIcon: Icon(Icons.link, size: 17),
+                        ),
+                        validator: _optionalHttpUrl,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton.icon(
+                      onPressed: uploading ? null : () => onUpload(fields),
+                      icon: const Icon(Icons.upload_file, size: 16),
+                      label: const Text('Upload'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     ),
   );
@@ -671,6 +980,7 @@ class _EditorSettings extends StatelessWidget {
     required this.hotspot,
     required this.latitude,
     required this.longitude,
+    required this.hotspotRadius,
     required this.readTime,
     required this.xp,
     required this.timeLimit,
@@ -681,6 +991,8 @@ class _EditorSettings extends StatelessWidget {
     required this.mediaType,
     required this.mediaCaption,
     required this.onMediaTypeChanged,
+    required this.uploading,
+    required this.onUpload,
   });
   final AwarenessContentType type;
   final String category;
@@ -689,6 +1001,7 @@ class _EditorSettings extends StatelessWidget {
   final TextEditingController hotspot;
   final TextEditingController latitude;
   final TextEditingController longitude;
+  final TextEditingController hotspotRadius;
   final TextEditingController readTime;
   final TextEditingController xp;
   final TextEditingController timeLimit;
@@ -699,6 +1012,8 @@ class _EditorSettings extends StatelessWidget {
   final String mediaType;
   final TextEditingController mediaCaption;
   final ValueChanged<String> onMediaTypeChanged;
+  final bool uploading;
+  final ValueChanged<String> onUpload;
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -744,46 +1059,33 @@ class _EditorSettings extends StatelessWidget {
               },
             ),
             const SizedBox(height: 10),
-            if (type == AwarenessContentType.quiz)
-              TextFormField(
-                controller: timeLimit,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Time limit (seconds)',
-                  prefixIcon: Icon(Icons.timer_outlined, size: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: xp,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'XP reward'),
+                    validator: _positiveNumber,
+                  ),
                 ),
-                validator: _positiveNumber,
-              )
-            else
-              Row(
-                children: [
+                if (type == AwarenessContentType.lesson) ...[
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextFormField(
-                      controller: xp,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'XP reward'),
-                      validator: _positiveNumber,
+                      controller: readTime,
+                      decoration: const InputDecoration(labelText: 'Read time'),
+                      validator: _required,
                     ),
                   ),
-                  if (type == AwarenessContentType.lesson) ...[
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        controller: readTime,
-                        decoration: const InputDecoration(
-                          labelText: 'Read time',
-                        ),
-                        validator: _required,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
+            ),
           ],
         ),
       ),
       const SizedBox(height: 14),
-      if (type != AwarenessContentType.scenario)
+      if (type == AwarenessContentType.lesson)
         _EditorCard(
           title: type == AwarenessContentType.lesson
               ? 'Cover media'
@@ -801,13 +1103,22 @@ class _EditorSettings extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(color: AppColors.line),
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.image_outlined, color: AppColors.blue, size: 28),
-                    SizedBox(height: 5),
-                    Text(
-                      'Paste a public Supabase Storage URL',
+                    const Icon(
+                      Icons.image_outlined,
+                      color: AppColors.blue,
+                      size: 28,
+                    ),
+                    const SizedBox(height: 5),
+                    OutlinedButton.icon(
+                      onPressed: uploading ? null : () => onUpload('image'),
+                      icon: const Icon(Icons.upload_file, size: 16),
+                      label: Text(uploading ? 'Uploading…' : 'Upload image'),
+                    ),
+                    const Text(
+                      'JPG, JPEG or PNG · or paste a URL below',
                       style: TextStyle(color: AppColors.slate, fontSize: 9),
                     ),
                   ],
@@ -820,6 +1131,7 @@ class _EditorSettings extends StatelessWidget {
                   hintText: 'https://.../cover.jpg',
                   prefixIcon: Icon(Icons.link, size: 17),
                 ),
+                validator: _optionalHttpUrl,
               ),
             ],
           ),
@@ -846,6 +1158,21 @@ class _EditorSettings extends StatelessWidget {
               ),
               if (mediaType != 'none') ...[
                 const SizedBox(height: 9),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: uploading ? null : () => onUpload(mediaType),
+                    icon: const Icon(Icons.upload_file, size: 17),
+                    label: Text(
+                      uploading
+                          ? 'Uploading…'
+                          : mediaType == 'video'
+                          ? 'Upload MP4 video'
+                          : 'Upload JPG, JPEG or PNG',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 7),
                 TextFormField(
                   controller: image,
                   decoration: InputDecoration(
@@ -857,8 +1184,10 @@ class _EditorSettings extends StatelessWidget {
                           ? Icons.play_circle_outline
                           : Icons.image_outlined,
                     ),
+                    helperText: 'Upload a file or paste a public URL.',
                   ),
-                  validator: _required,
+                  validator: (value) =>
+                      _required(value) ?? _optionalHttpUrl(value),
                 ),
                 const SizedBox(height: 9),
                 TextFormField(
@@ -933,6 +1262,32 @@ class _EditorSettings extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 9),
+                TextFormField(
+                  controller: hotspotRadius,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Trigger radius (metres)',
+                    prefixIcon: Icon(Icons.radar, size: 18),
+                    helperText: 'Recommended: 100–1000 metres',
+                  ),
+                  validator: (value) {
+                    final radiusValue = int.tryParse(value ?? '');
+                    if (radiusValue == null ||
+                        radiusValue < 50 ||
+                        radiusValue > 5000) {
+                      return 'Use a radius from 50 to 5000 metres.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 9),
+                _HotspotMapPicker(
+                  hotspot: hotspot,
+                  latitude: latitude,
+                  longitude: longitude,
+                  radius: hotspotRadius,
+                ),
               ],
             ],
           ),
@@ -973,18 +1328,254 @@ class _EditorCard extends StatelessWidget {
   );
 }
 
+class _HotspotMapPicker extends StatefulWidget {
+  const _HotspotMapPicker({
+    required this.hotspot,
+    required this.latitude,
+    required this.longitude,
+    required this.radius,
+  });
+
+  final TextEditingController hotspot;
+  final TextEditingController latitude;
+  final TextEditingController longitude;
+  final TextEditingController radius;
+
+  @override
+  State<_HotspotMapPicker> createState() => _HotspotMapPickerState();
+}
+
+class _HotspotMapPickerState extends State<_HotspotMapPicker> {
+  final _addressLookup = AddressLookupService();
+  LatLng? _selected;
+  bool _locating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final latitude = double.tryParse(widget.latitude.text);
+    final longitude = double.tryParse(widget.longitude.text);
+    if (latitude != null && longitude != null) {
+      _selected = LatLng(latitude, longitude);
+    }
+  }
+
+  @override
+  void dispose() {
+    _addressLookup.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectArea(LatLng point) async {
+    if (_locating) return;
+    setState(() {
+      _selected = point;
+      _locating = true;
+    });
+    final area = await _addressLookup.areaFromCoordinates(
+      latitude: point.latitude,
+      longitude: point.longitude,
+    );
+    if (!mounted) return;
+    final label = area?.trim().isNotEmpty == true
+        ? area!.trim()
+        : 'Selected area';
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.location_on, color: AppColors.blue),
+            title: const Text('Is this the area region?'),
+            content: Text(
+              '$label\n\nCentre: ${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}\nRadius: ${widget.radius.text} metres',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No, choose again'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Yes, use this area'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!mounted) return;
+    setState(() => _locating = false);
+    if (!confirmed) return;
+    widget.hotspot.text = label;
+    widget.latitude.text = point.latitude.toStringAsFixed(6);
+    widget.longitude.text = point.longitude.toStringAsFixed(6);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _selected;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tap the map to choose the centre of the trigger area. The place name is filled automatically.',
+          style: TextStyle(color: AppColors.slate, fontSize: 9),
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 260,
+            child: Stack(
+              children: [
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: selected ?? const LatLng(3.1390, 101.6869),
+                    initialZoom: selected == null ? 12.5 : 15,
+                    onTap: (_, point) => _selectArea(point),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.visit1my.collab',
+                    ),
+                    if (selected != null)
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: selected,
+                            radius: 42,
+                            color: AppColors.blue.withValues(alpha: .16),
+                            borderColor: AppColors.blue,
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      ),
+                    if (selected != null)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: selected,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(
+                              Icons.location_pin,
+                              color: AppColors.red,
+                              size: 38,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                if (_locating)
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: Color(0x66FFFFFF),
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuizQuestionFields {
+  _QuizQuestionFields({
+    this.id,
+    String question = '',
+    String explanation = '',
+    String image = '',
+    int timeLimitSeconds = 15,
+    List<String> options = const [],
+    this.correctIndex = 0,
+  }) : question = TextEditingController(text: question),
+       explanation = TextEditingController(text: explanation),
+       image = TextEditingController(text: image),
+       timeLimit = TextEditingController(text: '$timeLimitSeconds'),
+       options = List.generate(
+         4,
+         (index) => TextEditingController(
+           text: index < options.length ? options[index] : '',
+         ),
+       );
+
+  factory _QuizQuestionFields.fromDraft(AdminQuizQuestionDraft draft) =>
+      _QuizQuestionFields(
+        id: draft.id,
+        question: draft.question,
+        explanation: draft.explanation,
+        image: draft.imageUrl ?? '',
+        timeLimitSeconds: draft.timeLimitSeconds,
+        options: draft.options,
+        correctIndex: draft.correctIndex.clamp(0, 3),
+      );
+
+  final String? id;
+  final TextEditingController question;
+  final TextEditingController explanation;
+  final TextEditingController image;
+  final TextEditingController timeLimit;
+  final List<TextEditingController> options;
+  int correctIndex;
+
+  AdminQuizQuestionDraft toDraft() {
+    final selectedAnswer = options[correctIndex].text.trim();
+    final cleanOptions = options
+        .map((controller) => controller.text.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+    if (cleanOptions.length < 2 || selectedAnswer.isEmpty) {
+      throw StateError(
+        'Every question needs at least two answers and one marked correct answer.',
+      );
+    }
+    final seconds = int.parse(timeLimit.text.trim());
+    if (seconds < 5 || seconds > 300) {
+      throw StateError('Question time limits must be from 5 to 300 seconds.');
+    }
+    return AdminQuizQuestionDraft(
+      id: id,
+      question: question.text.trim(),
+      options: cleanOptions,
+      correctIndex: cleanOptions.indexOf(selectedAnswer),
+      explanation: explanation.text.trim(),
+      timeLimitSeconds: seconds,
+      imageUrl: image.text.trim(),
+    );
+  }
+
+  void dispose() {
+    question.dispose();
+    explanation.dispose();
+    image.dispose();
+    timeLimit.dispose();
+    for (final controller in options) {
+      controller.dispose();
+    }
+  }
+}
+
 class _EditorActions extends StatelessWidget {
   const _EditorActions({
     required this.saving,
     required this.currentStatus,
     required this.onCancel,
     required this.onDraft,
+    required this.onArchive,
     required this.onPublish,
   });
   final bool saving;
   final String currentStatus;
   final VoidCallback onCancel;
   final VoidCallback onDraft;
+  final VoidCallback onArchive;
   final VoidCallback onPublish;
   @override
   Widget build(BuildContext context) => Container(
@@ -1015,6 +1606,12 @@ class _EditorActions extends StatelessWidget {
           label: Text(
             currentStatus == 'draft' ? 'Save draft' : 'Unpublish to draft',
           ),
+        ),
+        const SizedBox(width: 9),
+        OutlinedButton.icon(
+          onPressed: saving ? null : onArchive,
+          icon: const Icon(Icons.archive_outlined, size: 16),
+          label: const Text('Keep as archived'),
         ),
         const SizedBox(width: 9),
         FilledButton.icon(
@@ -1060,6 +1657,18 @@ String? _required(String? value) =>
 String? _positiveNumber(String? value) {
   final number = int.tryParse(value ?? '');
   return number == null || number <= 0 ? 'Enter a positive number' : null;
+}
+
+String? _optionalHttpUrl(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  final uri = Uri.tryParse(text);
+  if (uri == null ||
+      !{'http', 'https'}.contains(uri.scheme) ||
+      uri.host.isEmpty) {
+    return 'Enter a complete http:// or https:// URL.';
+  }
+  return null;
 }
 
 String? _coordinate(String? value) =>
