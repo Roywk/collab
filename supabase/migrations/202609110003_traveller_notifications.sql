@@ -21,11 +21,22 @@ alter table public.traveller_notifications enable row level security;
 
 drop policy if exists traveller_notifications_public_read
   on public.traveller_notifications;
-create policy traveller_notifications_public_read
+drop policy if exists traveller_notifications_anon_read
+  on public.traveller_notifications;
+drop policy if exists traveller_notifications_authenticated_read
+  on public.traveller_notifications;
+
+create policy traveller_notifications_anon_read
   on public.traveller_notifications
   for select
-  to anon, authenticated
+  to anon
   using (is_active = true);
+
+create policy traveller_notifications_authenticated_read
+  on public.traveller_notifications
+  for select
+  to authenticated
+  using (is_active = true or public.is_admin() is true);
 
 drop policy if exists traveller_notifications_admin_insert
   on public.traveller_notifications;
