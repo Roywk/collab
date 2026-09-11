@@ -3,7 +3,7 @@ import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
 import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 class ScenarioGameplayScreen extends StatefulWidget {
   const ScenarioGameplayScreen({
@@ -37,6 +37,13 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   }
 
   void _nextStep() {
+    if (selectedOption?.isCorrect != true) {
+      setState(() {
+        selectedOption = null;
+        showFeedback = false;
+      });
+      return;
+    }
     if (currentStepIndex < widget.scenario.steps.length - 1) {
       setState(() {
         currentStepIndex++;
@@ -51,6 +58,7 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   Future<void> _showCompletion() async {
     final earnedXp = await widget.repository.completeScenario(
       widget.scenario.id,
+      fallbackXp: widget.scenario.xpReward,
     );
     if (!mounted) return;
     showModalBottomSheet(
@@ -84,9 +92,9 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                earnedXp
-                    ? '+${widget.scenario.xpReward} XP EARNED!'
-                    : 'SCENARIO ALREADY COMPLETED',
+                earnedXp > 0
+                    ? '+$earnedXp XP EARNED!'
+                    : 'PRACTICE COMPLETE · TODAY’S XP ALREADY EARNED',
                 style: const TextStyle(
                   color: AppColors.green,
                   fontWeight: FontWeight.w800,
@@ -110,7 +118,7 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    selectedOption?.feedback ?? widget.scenario.description,
+                    'Correct answer: ${selectedOption?.text}\n\n${selectedOption?.feedback ?? widget.scenario.description}',
                     style: const TextStyle(fontSize: 13, color: AppColors.navy),
                   ),
                 ],
@@ -262,42 +270,85 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
           }),
           const SizedBox(height: 12),
           if (showFeedback)
-            SurfaceCard(
-              color: selectedOption!.isCorrect
-                  ? AppColors.greenSoft
-                  : AppColors.redSoft,
-              borderColor: selectedOption!.isCorrect
-                  ? AppColors.green
-                  : AppColors.red,
-              child: Row(
-                children: [
-                  Icon(
-                    selectedOption!.isCorrect
-                        ? Icons.check_circle
-                        : Icons.error,
-                    color: selectedOption!.isCorrect
-                        ? AppColors.green
-                        : AppColors.red,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      selectedOption!.feedback,
-                      style: TextStyle(
+            Builder(
+              builder: (context) {
+                final correctOption = step.options.firstWhere(
+                  (option) => option.isCorrect,
+                );
+                return SurfaceCard(
+                  color: selectedOption!.isCorrect
+                      ? AppColors.greenSoft
+                      : AppColors.redSoft,
+                  borderColor: selectedOption!.isCorrect
+                      ? AppColors.green
+                      : AppColors.red,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        selectedOption!.isCorrect
+                            ? Icons.check_circle
+                            : Icons.school_outlined,
                         color: selectedOption!.isCorrect
                             ? AppColors.green
                             : AppColors.red,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selectedOption!.isCorrect
+                                  ? 'Correct — that is the safest response.'
+                                  : 'No harm done — this is a safe place to practise.',
+                              style: TextStyle(
+                                color: selectedOption!.isCorrect
+                                    ? AppColors.green
+                                    : AppColors.red,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            if (!selectedOption!.isCorrect) ...[
+                              Text(
+                                'Correct answer: ${correctOption.text}',
+                                style: const TextStyle(
+                                  color: AppColors.green,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                            ],
+                            Text(
+                              selectedOption!.isCorrect
+                                  ? selectedOption!.feedback
+                                  : '${selectedOption!.feedback}\n\nWhy the safer answer works: ${correctOption.feedback}',
+                              style: const TextStyle(
+                                color: AppColors.navy,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           const SizedBox(height: 16),
           PrimaryActionButton(
-            label: showFeedback ? 'Continue' : 'Submit Answer',
+            label: showFeedback
+                ? selectedOption!.isCorrect
+                      ? 'Continue'
+                      : 'Try the safest response'
+                : 'Submit Answer',
             onPressed: showFeedback ? _nextStep : _submitAnswer,
           ),
         ],
@@ -306,78 +357,113 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
   }
 }
 
-class _ScenarioMedia extends StatelessWidget {
+class _ScenarioMedia extends StatefulWidget {
   const _ScenarioMedia({required this.scenario});
   final Scenario scenario;
 
-  Future<void> _openVideo(BuildContext context) async {
+  @override
+  State<_ScenarioMedia> createState() => _ScenarioMediaState();
+}
+
+class _ScenarioMediaState extends State<_ScenarioMedia> {
+  VideoPlayerController? _controller;
+  Object? _videoError;
+
+  Scenario get scenario => widget.scenario;
+
+  @override
+  void initState() {
+    super.initState();
+    if (scenario.mediaType == 'video') _prepareVideo();
+  }
+
+  Future<void> _prepareVideo() async {
     final uri = Uri.tryParse(scenario.mediaUrl ?? '');
-    if (uri == null ||
-        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This scenario video could not be opened.'),
-        ),
-      );
+    if (uri == null) {
+      setState(() => _videoError = StateError('Invalid video URL'));
+      return;
     }
+    final controller = VideoPlayerController.networkUrl(uri);
+    _controller = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) setState(() => _videoError = error);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (scenario.mediaType == 'video') {
-      return Semantics(
-        label: scenario.mediaCaption ?? 'Scenario video',
-        button: true,
-        child: InkWell(
-          onTap: () => _openVideo(context),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            height: 170,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF111827), Color(0xFF334155)],
+      final controller = _controller;
+      if (_videoError != null) {
+        return Container(
+          height: 150,
+          decoration: BoxDecoration(
+            color: AppColors.redSoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          alignment: Alignment.center,
+          child: const Text('Video preview is unavailable.'),
+        );
+      }
+      if (controller == null || !controller.value.isInitialized) {
+        return const SizedBox(
+          height: 150,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: ColoredBox(
+          color: Colors.black,
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
               ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    color: AppColors.blue,
-                    size: 34,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Watch scenario briefing',
-                  style: TextStyle(
+              VideoProgressIndicator(
+                controller,
+                allowScrubbing: true,
+                colors: const VideoProgressColors(playedColor: AppColors.blue),
+              ),
+              Row(
+                children: [
+                  IconButton(
                     color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (scenario.mediaCaption?.isNotEmpty == true) ...[
-                  const SizedBox(height: 5),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      scenario.mediaCaption!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                      ),
+                    tooltip: controller.value.isPlaying ? 'Pause' : 'Play',
+                    onPressed: () async {
+                      controller.value.isPlaying
+                          ? await controller.pause()
+                          : await controller.play();
+                      if (mounted) setState(() {});
+                    },
+                    icon: Icon(
+                      controller.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                     ),
                   ),
+                  Expanded(
+                    child: Text(
+                      scenario.mediaCaption ?? 'Scenario briefing',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                 ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );

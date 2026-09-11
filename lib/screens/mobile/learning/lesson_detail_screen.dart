@@ -8,11 +8,13 @@ class LessonDetailScreen extends StatefulWidget {
   const LessonDetailScreen({
     required this.lesson,
     required this.repository,
+    this.isReview = false,
     super.key,
   });
 
   final LearningLesson lesson;
   final LearningRepository repository;
+  final bool isReview;
 
   @override
   State<LessonDetailScreen> createState() => _LessonDetailScreenState();
@@ -24,12 +26,17 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   Future<void> _complete() async {
     setState(() => isCompleting = true);
     try {
-      await widget.repository.completeLesson(widget.lesson.id);
+      final xpAwarded = await widget.repository.completeLesson(
+        widget.lesson.id,
+        fallbackXp: widget.lesson.xpReward,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Lesson completed! +${widget.lesson.xpReward} XP earned.',
+              xpAwarded > 0
+                  ? 'Lesson completed! +$xpAwarded XP earned.'
+                  : 'Review completed. XP for this lesson was already earned today.',
             ),
           ),
         );
@@ -185,9 +192,13 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  if (!widget.lesson.isCompleted)
+                  if (!widget.lesson.isCompleted || widget.isReview)
                     PrimaryActionButton(
-                      label: isCompleting ? 'Saving...' : 'Mark as Completed',
+                      label: isCompleting
+                          ? 'Saving...'
+                          : widget.isReview
+                          ? 'Finish Review'
+                          : 'Mark as Completed',
                       icon: isCompleting ? null : Icons.check_circle_outline,
                       onPressed: isCompleting ? null : _complete,
                     )

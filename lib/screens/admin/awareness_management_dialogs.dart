@@ -1,0 +1,700 @@
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+
+import '../../core/app_theme.dart';
+import '../../data/awareness_admin_repository.dart';
+import '../../models/awareness_admin_models.dart';
+
+class PartnerEditorDialog extends StatefulWidget {
+  const PartnerEditorDialog({
+    required this.repository,
+    this.partner,
+    super.key,
+  });
+  final AwarenessAdminRepository repository;
+  final AdminPartnerRecord? partner;
+
+  @override
+  State<PartnerEditorDialog> createState() => _PartnerEditorDialogState();
+}
+
+class _PartnerEditorDialogState extends State<PartnerEditorDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _legal;
+  late final TextEditingController _display;
+  late final TextEditingController _registration;
+  late final TextEditingController _email;
+  late final TextEditingController _phone;
+  late final TextEditingController _website;
+  late final TextEditingController _notes;
+  late String _category;
+  late String _status;
+  late final List<String> _evidenceUrls;
+
+  void _previewEvidence(String url, int index) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Partnership evidence ${index + 1}'),
+                trailing: IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+              Flexible(
+                child: InteractiveViewer(
+                  minScale: .5,
+                  maxScale: 5,
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Text('This evidence image could not be loaded.'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _uploadingEvidence = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final partner = widget.partner;
+    _legal = TextEditingController(text: partner?.legalName ?? '');
+    _display = TextEditingController(text: partner?.displayName ?? '');
+    _registration = TextEditingController(
+      text: partner?.registrationNumber ?? '',
+    );
+    _email = TextEditingController(text: partner?.contactEmail ?? '');
+    _phone = TextEditingController(text: partner?.contactPhone ?? '');
+    _website = TextEditingController(text: partner?.websiteUrl ?? '');
+    _notes = TextEditingController(text: partner?.verificationNotes ?? '');
+    _category = partner?.category ?? 'Hotel';
+    _status = partner?.verificationStatus ?? 'pending';
+    _evidenceUrls = [...?partner?.evidenceUrls];
+  }
+
+  @override
+  void dispose() {
+    for (final controller in [
+      _legal,
+      _display,
+      _registration,
+      _email,
+      _phone,
+      _website,
+      _notes,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    if (_status == 'verified' && _evidenceUrls.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Attach at least one evidence image before verification.',
+          ),
+        ),
+      );
+      return;
+    }
+    Navigator.pop(
+      context,
+      AdminPartnerDraft(
+        id: widget.partner?.id,
+        legalName: _legal.text.trim(),
+        displayName: _display.text.trim(),
+        registrationNumber: _registration.text.trim(),
+        category: _category,
+        contactEmail: _email.text.trim(),
+        contactPhone: _phone.text.trim(),
+        websiteUrl: _website.text.trim(),
+        verificationStatus: _status,
+        verificationNotes: _notes.text.trim(),
+        evidenceUrls: _evidenceUrls,
+        // A verified partnership is deployable. Re-verifying a previously
+        // suspended record must reactivate it as part of the same save.
+        isActive: _status == 'verified'
+            ? true
+            : widget.partner?.isActive ?? true,
+      ),
+    );
+  }
+
+  Future<void> _uploadEvidence() async {
+    final files = await ImagePicker().pickMultiImage(
+      imageQuality: 88,
+      limit: 5 - _evidenceUrls.length,
+    );
+    if (files.isEmpty || !mounted) return;
+    setState(() => _uploadingEvidence = true);
+    try {
+      for (final file in files) {
+        final extension = file.name.split('.').last.toLowerCase();
+        if (!{'jpg', 'jpeg', 'png'}.contains(extension)) {
+          throw StateError('Evidence must be JPG, JPEG, or PNG.');
+        }
+        final url = await widget.repository.uploadAwarenessMedia(
+          bytes: await file.readAsBytes(),
+          fileName: file.name,
+          folder: 'partner-evidence',
+          contentType: extension == 'png' ? 'image/png' : 'image/jpeg',
+        );
+        if (!_evidenceUrls.contains(url)) _evidenceUrls.add(url);
+      }
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Evidence upload failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingEvidence = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+    title: Text(
+      widget.partner == null ? 'Add reward partner' : 'Review reward partner',
+    ),
+    content: SizedBox(
+      width: 760,
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Field(
+                controller: _legal,
+                label: 'Registered legal name',
+                required: true,
+                minimumLength: 3,
+              ),
+              _Field(
+                controller: _display,
+                label: 'Public display name',
+                required: true,
+                minimumLength: 2,
+              ),
+              _Field(
+                controller: _registration,
+                label: 'SSM / registration number',
+                required: true,
+                minimumLength: 3,
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _category,
+                      decoration: const InputDecoration(
+                        labelText: 'Partner category',
+                      ),
+                      items:
+                          <String>{
+                                if (_category.isNotEmpty) _category,
+                                'Hotel',
+                                'Restaurant',
+                                'Transport',
+                                'Retail',
+                                'Attraction',
+                                'Other',
+                              }
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (value) =>
+                          setState(() => _category = value ?? _category),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _status,
+                      decoration: const InputDecoration(
+                        labelText: 'Partnership status',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'pending',
+                          child: Text('Pending review'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'verified',
+                          child: Text('Verified partner'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'rejected',
+                          child: Text('Rejected'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'suspended',
+                          child: Text('Suspended'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _status = value ?? _status),
+                    ),
+                  ),
+                ],
+              ),
+              _Field(
+                controller: _email,
+                label: 'Business contact email',
+                required: true,
+                email: true,
+              ),
+              _Field(
+                controller: _phone,
+                label: 'Business contact phone',
+                phone: true,
+              ),
+              _Field(
+                controller: _website,
+                label: 'Official website',
+                url: true,
+              ),
+              _Field(
+                controller: _notes,
+                label: 'Verification evidence and approval notes',
+                required: _status == 'verified',
+                lines: 3,
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.canvas,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Partnership evidence',
+                            style: TextStyle(
+                              color: AppColors.navy,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed:
+                              _uploadingEvidence || _evidenceUrls.length >= 5
+                              ? null
+                              : _uploadEvidence,
+                          icon: _uploadingEvidence
+                              ? const SizedBox.square(
+                                  dimension: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.upload_file_outlined),
+                          label: const Text('Upload evidence'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'JPG, JPEG or PNG · up to 5 images. Required only for Verified status.',
+                      style: TextStyle(color: AppColors.slate, fontSize: 10),
+                    ),
+                    if (_evidenceUrls.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < _evidenceUrls.length;
+                            index++
+                          )
+                            InputChip(
+                              avatar: ClipOval(
+                                child: Image.network(
+                                  _evidenceUrls[index],
+                                  width: 22,
+                                  height: 22,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                              label: Text('Evidence ${index + 1}'),
+                              onPressed: () =>
+                                  _previewEvidence(_evidenceUrls[index], index),
+                              onDeleted: () =>
+                                  setState(() => _evidenceUrls.removeAt(index)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (_status == 'verified')
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.amberSoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'By saving as Verified, you confirm the business identity and sponsorship authority were checked.',
+                    style: TextStyle(color: AppColors.navy, fontSize: 10),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton.icon(
+        onPressed: _uploadingEvidence ? null : _save,
+        icon: const Icon(Icons.save_outlined),
+        label: const Text('Save partner'),
+      ),
+    ],
+  );
+}
+
+class VoucherEditorDialog extends StatefulWidget {
+  const VoucherEditorDialog({required this.partners, this.draft, super.key});
+  final List<AdminPartnerRecord> partners;
+  final AdminVoucherDraft? draft;
+
+  @override
+  State<VoucherEditorDialog> createState() => _VoucherEditorDialogState();
+}
+
+class _VoucherEditorDialogState extends State<VoucherEditorDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _title;
+  late final TextEditingController _discount;
+  late final TextEditingController _xp;
+  late final TextEditingController _codes;
+  late String _partnerId;
+  late String _status;
+  late DateTime _validUntil;
+
+  List<String> get _parsedCodes => _codes.text
+      .split(RegExp(r'[\n,;]+'))
+      .map((code) => code.trim().toUpperCase())
+      .where((code) => code.isNotEmpty)
+      .toSet()
+      .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+    _title = TextEditingController(text: draft?.title ?? '');
+    _discount = TextEditingController(text: draft?.discountAmount ?? '');
+    _xp = TextEditingController(text: '${draft?.requiredXp ?? 300}');
+    _codes = TextEditingController(text: draft?.codes.join('\n') ?? '');
+    _codes.addListener(_codesChanged);
+    _partnerId = draft?.partnerId.isNotEmpty == true
+        ? draft!.partnerId
+        : widget.partners.first.id;
+    _status = draft?.status ?? 'draft';
+    _validUntil =
+        draft?.validUntil ?? DateTime.now().add(const Duration(days: 90));
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _discount.dispose();
+    _xp.dispose();
+    _codes.removeListener(_codesChanged);
+    _codes.dispose();
+    super.dispose();
+  }
+
+  void _codesChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_validUntil.isAfter(DateTime.now())) return;
+    final partner = widget.partners.firstWhere((item) => item.id == _partnerId);
+    Navigator.pop(
+      context,
+      AdminVoucherDraft(
+        id: widget.draft?.id,
+        partnerId: partner.id,
+        partnerName: partner.displayName,
+        title: _title.text.trim(),
+        discountAmount: _discount.text.trim(),
+        requiredXp: int.parse(_xp.text.trim()),
+        validUntil: _validUntil,
+        status: _status,
+        codes: _parsedCodes,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(
+      widget.draft == null ? 'Deploy partner voucher' : 'Edit partner voucher',
+    ),
+    content: SizedBox(
+      width: 680,
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: _partnerId,
+                decoration: const InputDecoration(
+                  labelText: 'Verified sponsor',
+                ),
+                items: widget.partners
+                    .map(
+                      (partner) => DropdownMenuItem(
+                        value: partner.id,
+                        child: Text(
+                          '${partner.partnerCode} · ${partner.displayName}',
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _partnerId = value ?? _partnerId),
+              ),
+              _Field(controller: _title, label: 'Reward title', required: true),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      controller: _discount,
+                      label: 'Benefit (e.g. 15% OFF)',
+                      required: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Field(
+                      controller: _xp,
+                      label: 'XP cost',
+                      required: true,
+                      number: true,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _validUntil,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 1825)),
+                  );
+                  if (date != null) {
+                    setState(
+                      () => _validUntil = date.add(
+                        const Duration(hours: 23, minutes: 59),
+                      ),
+                    );
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Valid until',
+                    prefixIcon: Icon(Icons.calendar_month_outlined),
+                    suffixIcon: Icon(Icons.arrow_drop_down),
+                  ),
+                  child: Text(DateFormat('dd MMM yyyy').format(_validUntil)),
+                ),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _status,
+                decoration: const InputDecoration(
+                  labelText: 'Deployment status',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                  DropdownMenuItem(
+                    value: 'published',
+                    child: Text('Published'),
+                  ),
+                  DropdownMenuItem(value: 'archived', child: Text('Archived')),
+                ],
+                onChanged: (value) =>
+                    setState(() => _status = value ?? _status),
+              ),
+              _Field(
+                controller: _codes,
+                label: 'Unique voucher codes — one per line',
+                required: _status == 'published',
+                lines: 5,
+                voucherCodes: true,
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 7),
+                  child: Text(
+                    '${_parsedCodes.length} unique code${_parsedCodes.length == 1 ? '' : 's'} ready · one traveller per code. Existing claimed codes stay protected.',
+                    style: const TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton.icon(
+        onPressed: _save,
+        icon: const Icon(Icons.rocket_launch_outlined),
+        label: const Text('Save voucher'),
+      ),
+    ],
+  );
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.controller,
+    required this.label,
+    this.required = false,
+    this.email = false,
+    this.number = false,
+    this.lines = 1,
+    this.minimumLength = 0,
+    this.phone = false,
+    this.url = false,
+    this.voucherCodes = false,
+  });
+  final TextEditingController controller;
+  final String label;
+  final bool required;
+  final bool email;
+  final bool number;
+  final int lines;
+  final int minimumLength;
+  final bool phone;
+  final bool url;
+  final bool voucherCodes;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: TextFormField(
+      controller: controller,
+      minLines: lines,
+      maxLines: lines,
+      keyboardType: number
+          ? TextInputType.number
+          : email
+          ? TextInputType.emailAddress
+          : lines > 1
+          ? TextInputType.multiline
+          : TextInputType.text,
+      textInputAction: lines > 1
+          ? TextInputAction.newline
+          : TextInputAction.next,
+      decoration: InputDecoration(labelText: label),
+      validator: (value) {
+        final text = value?.trim() ?? '';
+        if (required && text.isEmpty) return '$label is required.';
+        if (text.isNotEmpty && text.length < minimumLength) {
+          return '$label must contain at least $minimumLength characters.';
+        }
+        if (email && text.isNotEmpty && !text.contains('@')) {
+          return 'Enter a valid email address.';
+        }
+        if (number && (int.tryParse(text) ?? 0) <= 0) {
+          return 'Enter a positive amount.';
+        }
+        if (phone &&
+            text.isNotEmpty &&
+            !RegExp(r'^\+?[0-9 ()-]{7,20}$').hasMatch(text)) {
+          return 'Enter a valid business phone number.';
+        }
+        if (url && text.isNotEmpty) {
+          final uri = Uri.tryParse(text);
+          if (uri == null ||
+              !{'http', 'https'}.contains(uri.scheme) ||
+              uri.host.isEmpty) {
+            return 'Enter a complete http:// or https:// URL.';
+          }
+        }
+        if (voucherCodes && text.isNotEmpty) {
+          final codes = text
+              .split(RegExp(r'[\n,;]+'))
+              .map((code) => code.trim().toUpperCase())
+              .where((code) => code.isNotEmpty)
+              .toList();
+          if (codes.toSet().length != codes.length) {
+            return 'Remove duplicate voucher codes.';
+          }
+          if (codes.any(
+            (code) => !RegExp(r'^[A-Z0-9][A-Z0-9_-]{3,39}$').hasMatch(code),
+          )) {
+            return 'Use 4–40 characters: letters, numbers, hyphens or underscores.';
+          }
+        }
+        return null;
+      },
+    ),
+  );
+}

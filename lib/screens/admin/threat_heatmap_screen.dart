@@ -5,11 +5,12 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/app_widgets.dart';
-import '../../core/haversine.dart';
 import '../../data/scam_map_repository.dart';
 import '../../models/scam_map_models.dart';
 import '../../services/threat_export_service.dart';
 import 'admin_shell.dart';
+
+enum _HeatmapPeriod { lastSevenDays, monthly, yearly }
 
 class ThreatHeatmapScreen extends StatefulWidget {
   const ThreatHeatmapScreen({
@@ -43,8 +44,11 @@ class ThreatHeatmapScreen extends StatefulWidget {
 
 class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   final ThreatExportService _exportService = ThreatExportService();
+  final MapController _mapController = MapController();
   late Future<ScamMapLoadResult> _reportsFuture;
-  int _days = 30;
+  _HeatmapPeriod _period = _HeatmapPeriod.lastSevenDays;
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
   bool _exporting = false;
 
   @override
@@ -53,11 +57,30 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
     _reportsFuture = widget.repository.getThreatAnalyticsReports();
   }
 
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
   List<ScamMapReport> _filterByDate(List<ScamMapReport> reports) {
-    final cutoff = DateTime.now().subtract(Duration(days: _days));
-    return reports
-        .where((report) => report.reportedAt.isAfter(cutoff))
-        .toList();
+    final now = DateTime.now();
+    return reports.where((report) {
+      final date = report.reportedAt.toLocal();
+      switch (_period) {
+        case _HeatmapPeriod.lastSevenDays:
+          final start = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 6));
+          return !date.isBefore(start);
+        case _HeatmapPeriod.monthly:
+          return date.year == _selectedYear && date.month == _selectedMonth;
+        case _HeatmapPeriod.yearly:
+          return date.year == _selectedYear;
+      }
+    }).toList();
   }
 
   Future<void> _export(
@@ -87,14 +110,14 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
   Widget build(BuildContext context) {
     return AdminShell(
       selectedMenuItem: 'Geospatial Heatmap',
-      onBack: () => Navigator.of(context).pop(),
+      headerTitle: 'Geospatial Heatmap Analytics',
+      onBack: widget.onOpenDashboard ?? () => Navigator.of(context).maybePop(),
       onSignOut: widget.onSignOut,
       onOpenReports: widget.onOpenReports,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenDashboard: widget.onOpenDashboard,
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenHeatmap: widget.onOpenHeatmap,
       child: FutureBuilder<ScamMapLoadResult>(
@@ -138,6 +161,10 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
 
           final allReports = snapshot.data?.reports ?? const <ScamMapReport>[];
           final reports = _filterByDate(allReports);
+          final availableYears = <int>{
+            DateTime.now().year,
+            ...allReports.map((report) => report.reportedAt.toLocal().year),
+          }.toList()..sort((first, second) => second.compareTo(first));
           final analytics = ScamThreatAnalytics.fromReports(reports);
           final hotspots = analytics.locationCounts.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value));
@@ -209,10 +236,19 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final map = _HeatmapPanel(
+                    mapController: _mapController,
                     reports: reports,
-                    days: _days,
+                    period: _period,
+                    selectedMonth: _selectedMonth,
+                    selectedYear: _selectedYear,
+                    availableYears: availableYears,
                     exporting: _exporting,
-                    onDaysChanged: (days) => setState(() => _days = days),
+                    onPeriodChanged: (period) =>
+                        setState(() => _period = period),
+                    onMonthChanged: (month) =>
+                        setState(() => _selectedMonth = month),
+                    onYearChanged: (year) =>
+                        setState(() => _selectedYear = year),
                     onExportCsv: () => _export(reports, asPdf: false),
                     onExportPdf: () => _export(reports, asPdf: true),
                   );
@@ -240,9 +276,12 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(flex: 3, child: map),
+                      Expanded(flex: 4, child: map),
                       const SizedBox(width: 16),
-                      SizedBox(width: 330, child: analyticsPanels),
+                      SizedBox(
+                        width: (constraints.maxWidth * 0.23).clamp(300, 360),
+                        child: analyticsPanels,
+                      ),
                     ],
                   );
                 },
@@ -465,18 +504,30 @@ class _BreakdownChart extends StatelessWidget {
 
 class _HeatmapPanel extends StatelessWidget {
   const _HeatmapPanel({
+    required this.mapController,
     required this.reports,
-    required this.days,
+    required this.period,
+    required this.selectedMonth,
+    required this.selectedYear,
+    required this.availableYears,
     required this.exporting,
-    required this.onDaysChanged,
+    required this.onPeriodChanged,
+    required this.onMonthChanged,
+    required this.onYearChanged,
     required this.onExportCsv,
     required this.onExportPdf,
   });
 
+  final MapController mapController;
   final List<ScamMapReport> reports;
-  final int days;
+  final _HeatmapPeriod period;
+  final int selectedMonth;
+  final int selectedYear;
+  final List<int> availableYears;
   final bool exporting;
-  final ValueChanged<int> onDaysChanged;
+  final ValueChanged<_HeatmapPeriod> onPeriodChanged;
+  final ValueChanged<int> onMonthChanged;
+  final ValueChanged<int> onYearChanged;
   final VoidCallback onExportCsv;
   final VoidCallback onExportPdf;
 
@@ -504,68 +555,106 @@ class _HeatmapPanel extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Visualization of reported scam clusters across Malaysia.',
+                    'Visualization of reported scam clusters across Kuala Lumpur.',
                     style: TextStyle(color: AppColors.slate, fontSize: 11),
                   ),
                 ],
               ),
-              SegmentedButton<int>(
+              SegmentedButton<_HeatmapPeriod>(
+                showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: 7, label: Text('7d')),
-                  ButtonSegment(value: 30, label: Text('30d')),
-                  ButtonSegment(value: 90, label: Text('90d')),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.lastSevenDays,
+                    label: Text('7 Days'),
+                  ),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.monthly,
+                    label: Text('Monthly'),
+                  ),
+                  ButtonSegment(
+                    value: _HeatmapPeriod.yearly,
+                    label: Text('Yearly'),
+                  ),
                 ],
-                selected: {days},
+                selected: {period},
                 onSelectionChanged: (selection) =>
-                    onDaysChanged(selection.first),
+                    onPeriodChanged(selection.first),
               ),
+              if (period == _HeatmapPeriod.monthly)
+                DropdownButton<int>(
+                  value: selectedMonth,
+                  items: [
+                    for (var month = 1; month <= 12; month++)
+                      DropdownMenuItem(
+                        value: month,
+                        child: Text(
+                          DateFormat('MMM').format(DateTime(2024, month)),
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onMonthChanged(value);
+                  },
+                ),
+              if (period != _HeatmapPeriod.lastSevenDays)
+                DropdownButton<int>(
+                  value: selectedYear,
+                  items: [
+                    for (final year in availableYears)
+                      DropdownMenuItem(value: year, child: Text('$year')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onYearChanged(value);
+                  },
+                ),
             ],
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 360,
+            height: 520,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: const LatLng(3.1390, 101.6869),
-                  initialZoom: 12,
-                  minZoom: 11,
-                  maxZoom: 15,
-                  cameraConstraint: CameraConstraint.contain(
-                    bounds: LatLngBounds(
-                      const LatLng(
-                        kualaLumpurMinimumLatitude,
-                        kualaLumpurMinimumLongitude,
-                      ),
-                      const LatLng(
-                        kualaLumpurMaximumLatitude,
-                        kualaLumpurMaximumLongitude,
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: mapController,
+                    options: MapOptions(
+                      initialCenter: const LatLng(3.1390, 101.6869),
+                      initialZoom: 11.3,
+                      minZoom: 9,
+                      maxZoom: 18,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                       ),
                     ),
-                  ),
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.collab',
-                  ),
-                  CircleLayer(
-                    circles: [
-                      for (final report in reports)
-                        CircleMarker(
-                          point: LatLng(report.latitude, report.longitude),
-                          radius: report.isVerified ? 30 : 18,
-                          color: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.3)
-                              : AppColors.amber.withValues(alpha: 0.25),
-                          borderColor: report.isVerified
-                              ? AppColors.red.withValues(alpha: 0.6)
-                              : AppColors.amber.withValues(alpha: 0.55),
-                          borderStrokeWidth: 1,
-                        ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.collab',
+                      ),
+                      CircleLayer(
+                        circles: [
+                          for (final report in reports)
+                            CircleMarker(
+                              point: LatLng(report.latitude, report.longitude),
+                              radius: report.isVerified ? 30 : 18,
+                              color: report.isVerified
+                                  ? AppColors.red.withValues(alpha: 0.3)
+                                  : AppColors.amber.withValues(alpha: 0.25),
+                              borderColor: report.isVerified
+                                  ? AppColors.red.withValues(alpha: 0.6)
+                                  : AppColors.amber.withValues(alpha: 0.55),
+                              borderStrokeWidth: 1,
+                            ),
+                        ],
+                      ),
                     ],
+                  ),
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: _MapZoomControls(controller: mapController),
                   ),
                 ],
               ),
@@ -601,6 +690,53 @@ class _HeatmapPanel extends StatelessWidget {
                 label: const Text('PDF Report'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapZoomControls extends StatelessWidget {
+  const _MapZoomControls({required this.controller});
+
+  final MapController controller;
+
+  void _changeZoom(double amount) {
+    final camera = controller.camera;
+    controller.move(camera.center, (camera.zoom + amount).clamp(9.0, 18.0));
+  }
+
+  void _showAllKualaLumpur() {
+    controller.move(const LatLng(3.1390, 101.6869), 11.3);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Zoom in',
+            onPressed: () => _changeZoom(1),
+            icon: const Icon(Icons.add),
+          ),
+          const SizedBox(width: 38, child: Divider(height: 1)),
+          IconButton(
+            tooltip: 'Zoom out',
+            onPressed: () => _changeZoom(-1),
+            icon: const Icon(Icons.remove),
+          ),
+          const SizedBox(width: 38, child: Divider(height: 1)),
+          IconButton(
+            tooltip: 'Show all Kuala Lumpur',
+            onPressed: _showAllKualaLumpur,
+            icon: const Icon(Icons.center_focus_strong_outlined, size: 20),
           ),
         ],
       ),
@@ -661,10 +797,11 @@ class _HotspotLeaderboard extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${entries[index].value} alerts',
                       style: const TextStyle(

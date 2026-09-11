@@ -31,10 +31,15 @@ class AwarenessContentSummary {
 }
 
 class AwarenessCmsSnapshot {
-  const AwarenessCmsSnapshot({required this.contents, required this.vouchers});
+  const AwarenessCmsSnapshot({
+    required this.contents,
+    required this.vouchers,
+    this.partners = const [],
+  });
 
   final List<AwarenessContentSummary> contents;
   final List<AdminVoucherRecord> vouchers;
+  final List<AdminPartnerRecord> partners;
 
   int get lessons =>
       contents.where((item) => item.type == AwarenessContentType.lesson).length;
@@ -48,6 +53,134 @@ class AwarenessCmsSnapshot {
       contents.where((item) => item.status == 'published').length;
   int get availableCodes =>
       vouchers.fold(0, (sum, voucher) => sum + voucher.availableCodes);
+}
+
+class AdminPartnerRecord {
+  const AdminPartnerRecord({
+    required this.id,
+    required this.partnerCode,
+    required this.legalName,
+    required this.displayName,
+    required this.category,
+    required this.verificationStatus,
+    required this.isActive,
+    this.registrationNumber,
+    this.contactEmail,
+    this.contactPhone,
+    this.websiteUrl,
+    this.verificationNotes,
+    this.evidenceUrls = const [],
+  });
+
+  final String id;
+  final String partnerCode;
+  final String legalName;
+  final String displayName;
+  final String category;
+  final String verificationStatus;
+  final bool isActive;
+  final String? registrationNumber;
+  final String? contactEmail;
+  final String? contactPhone;
+  final String? websiteUrl;
+  final String? verificationNotes;
+  final List<String> evidenceUrls;
+
+  bool get isVerified => verificationStatus == 'verified' && isActive;
+}
+
+class AdminPartnerDraft {
+  const AdminPartnerDraft({
+    this.id,
+    required this.legalName,
+    required this.displayName,
+    required this.category,
+    required this.verificationStatus,
+    required this.isActive,
+    this.registrationNumber,
+    this.contactEmail,
+    this.contactPhone,
+    this.websiteUrl,
+    this.verificationNotes,
+    this.evidenceUrls = const [],
+  });
+
+  final String? id;
+  final String legalName;
+  final String displayName;
+  final String category;
+  final String verificationStatus;
+  final bool isActive;
+  final String? registrationNumber;
+  final String? contactEmail;
+  final String? contactPhone;
+  final String? websiteUrl;
+  final String? verificationNotes;
+  final List<String> evidenceUrls;
+}
+
+class AwarenessAnalytics {
+  const AwarenessAnalytics({
+    required this.lessonCompletions,
+    required this.scenarioCompletions,
+    required this.quizAttempts,
+    required this.quizPasses,
+    required this.xpAwarded,
+    required this.voucherClaims,
+    required this.voucherUses,
+    required this.activeLearners,
+    required this.recentClaims,
+    this.categories = const [],
+    this.activities = const [],
+  });
+
+  final int lessonCompletions;
+  final int scenarioCompletions;
+  final int quizAttempts;
+  final int quizPasses;
+  final int xpAwarded;
+  final int voucherClaims;
+  final int voucherUses;
+  final int activeLearners;
+  final List<AwarenessClaimEvent> recentClaims;
+  final List<String> categories;
+  final List<AwarenessActivityEvent> activities;
+
+  double get quizPassRate => quizAttempts == 0 ? 0 : quizPasses / quizAttempts;
+}
+
+class AwarenessActivityEvent {
+  const AwarenessActivityEvent({
+    required this.userName,
+    required this.activityType,
+    required this.contentTitle,
+    required this.category,
+    required this.occurredAt,
+    this.voucherCode,
+    this.voucherUsed = false,
+  });
+  final String userName;
+  final String activityType;
+  final String contentTitle;
+  final String category;
+  final DateTime occurredAt;
+  final String? voucherCode;
+  final bool voucherUsed;
+}
+
+class AwarenessClaimEvent {
+  const AwarenessClaimEvent({
+    required this.userName,
+    required this.voucherTitle,
+    required this.partnerName,
+    required this.code,
+    required this.claimedAt,
+  });
+  final String userName;
+  final String voucherTitle;
+  final String partnerName;
+  final String code;
+  final DateTime claimedAt;
 }
 
 class AdminLessonDraft {
@@ -66,6 +199,7 @@ class AdminLessonDraft {
     this.hotspotLabel,
     this.latitude,
     this.longitude,
+    this.hotspotRadiusMeters = 250,
     this.isLocationBased = false,
   });
 
@@ -83,20 +217,40 @@ class AdminLessonDraft {
   final String? hotspotLabel;
   final double? latitude;
   final double? longitude;
+  final int hotspotRadiusMeters;
   final bool isLocationBased;
 }
 
 class AdminQuizDraft {
   const AdminQuizDraft({
     this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.difficulty,
+    required this.xpReward,
+    required this.status,
+    required this.questions,
+  });
+
+  final String? id;
+  final String title;
+  final String description;
+  final String category;
+  final String difficulty;
+  final int xpReward;
+  final String status;
+  final List<AdminQuizQuestionDraft> questions;
+}
+
+class AdminQuizQuestionDraft {
+  const AdminQuizQuestionDraft({
+    this.id,
     required this.question,
     required this.options,
     required this.correctIndex,
     required this.explanation,
-    required this.category,
-    required this.difficulty,
     required this.timeLimitSeconds,
-    required this.status,
     this.imageUrl,
   });
 
@@ -105,10 +259,7 @@ class AdminQuizDraft {
   final List<String> options;
   final int correctIndex;
   final String explanation;
-  final String category;
-  final String difficulty;
   final int timeLimitSeconds;
-  final String status;
   final String? imageUrl;
 }
 
@@ -159,6 +310,8 @@ class AdminVoucherRecord {
     required this.totalCodes,
     required this.availableCodes,
     required this.claimedCodes,
+    this.partnerId,
+    this.codeInventory = const [],
   });
 
   final String id;
@@ -172,6 +325,19 @@ class AdminVoucherRecord {
   final int totalCodes;
   final int availableCodes;
   final int claimedCodes;
+  final String? partnerId;
+  final List<AdminVoucherCode> codeInventory;
+}
+
+class AdminVoucherCode {
+  const AdminVoucherCode({
+    required this.code,
+    required this.status,
+    this.claimedAt,
+  });
+  final String code;
+  final String status;
+  final DateTime? claimedAt;
 }
 
 class AdminVoucherDraft {
@@ -184,6 +350,7 @@ class AdminVoucherDraft {
     required this.validUntil,
     required this.status,
     required this.codes,
+    required this.partnerId,
   });
 
   final String? id;
@@ -194,4 +361,5 @@ class AdminVoucherDraft {
   final DateTime validUntil;
   final String status;
   final List<String> codes;
+  final String partnerId;
 }

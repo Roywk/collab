@@ -16,6 +16,7 @@ class ScenariosScreen extends StatefulWidget {
 
 class _ScenariosScreenState extends State<ScenariosScreen> {
   late Future<List<Scenario>> scenarios;
+  String selectedDifficulty = 'All difficulties';
 
   @override
   void initState() {
@@ -32,12 +33,12 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Scenario Simulations',
                   style: TextStyle(
                     color: AppColors.navy,
@@ -45,10 +46,36 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
+                const SizedBox(height: 4),
+                const Text(
                   'Practice handling real scam situations',
                   style: TextStyle(color: AppColors.slate, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedDifficulty,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Difficulty',
+                    prefixIcon: Icon(Icons.signal_cellular_alt),
+                  ),
+                  items:
+                      const [
+                            'All difficulties',
+                            'Beginner',
+                            'Intermediate',
+                            'Advanced',
+                          ]
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) => setState(
+                    () => selectedDifficulty = value ?? 'All difficulties',
+                  ),
                 ),
               ],
             ),
@@ -61,7 +88,11 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final items = snapshot.data ?? [];
+                final allItems = snapshot.data ?? [];
+                final items = allItems.where((scenario) {
+                  return selectedDifficulty == 'All difficulties' ||
+                      scenario.difficulty == selectedDifficulty;
+                }).toList();
 
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -99,7 +130,7 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                     ),
                     title: const Text('Challenge already completed'),
                     content: const Text(
-                      'This challenge has already been done. Are you sure you want to try it again? Your completion and XP will remain unchanged.',
+                      'This challenge has already been done. Are you sure you want to try it again? XP can be earned from this scenario only once per day.',
                     ),
                     actions: [
                       TextButton(
@@ -212,7 +243,9 @@ class _ScenariosScreenState extends State<ScenariosScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '+${scenario.xpReward} XP • ${scenario.status}',
+                    isCompleted
+                        ? 'Mastery practice XP available • ${scenario.status}'
+                        : 'Earn ${scenario.xpReward} XP after a correct completion',
                     style: TextStyle(
                       color: isCompleted ? AppColors.green : AppColors.slate,
                       fontSize: 10,

@@ -40,7 +40,6 @@ class VerifiedMerchantsScreen extends StatelessWidget {
       onOpenHeatmap: onOpenHeatmap,
       onOpenThreatDatabase: onOpenThreatDatabase,
       onOpenAwarenessCms: onOpenAwarenessCms,
-      onOpenSettings: onOpenSettings,
       onOpenPublishScamCase: onOpenPublishScamCase,
       onOpenVerifiedMerchants: onOpenVerifiedMerchants,
       child: ListView(

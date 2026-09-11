@@ -113,64 +113,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   Future<void> enterManually() async {
-    final inputController = TextEditingController();
-    String? validationMessage;
-
     final value = await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            void submit() {
-              final input = inputController.text.trim();
-              final analysis = QrAnalysisService.analyseDestination(input);
-
-              if (!analysis.isValid) {
-                setDialogState(() {
-                  validationMessage = analysis.invalidReason;
-                });
-                return;
-              }
-
-              Navigator.of(dialogContext).pop(input);
-            }
-
-            return AlertDialog(
-              title: const Text('Enter QR destination'),
-              content: TextField(
-                controller: inputController,
-                autofocus: true,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: 'Website URL',
-                  hintText: 'https://merchant.example/pay',
-                  errorText: validationMessage,
-                ),
-                onChanged: (_) {
-                  if (validationMessage != null) {
-                    setDialogState(() {
-                      validationMessage = null;
-                    });
-                  }
-                },
-                onSubmitted: (_) => submit(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(onPressed: submit, child: const Text('Verify')),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => const _ManualQrEntryDialog(),
     );
-
-    inputController.dispose();
-
-    if (value != null && value.trim().isNotEmpty) {
+    if (mounted && value != null && value.trim().isNotEmpty) {
       await verifyValue(value);
     }
   }
@@ -338,6 +285,69 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       ),
     );
   }
+}
+
+class _ManualQrEntryDialog extends StatefulWidget {
+  const _ManualQrEntryDialog();
+
+  @override
+  State<_ManualQrEntryDialog> createState() => _ManualQrEntryDialogState();
+}
+
+class _ManualQrEntryDialogState extends State<_ManualQrEntryDialog> {
+  final _controller = TextEditingController();
+  String? _validationMessage;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final input = _controller.text.trim();
+    final analysis = QrAnalysisService.analyseDestination(input);
+    if (!analysis.isValid) {
+      setState(() => _validationMessage = analysis.invalidReason);
+      return;
+    }
+    Navigator.of(context).pop(input);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    title: const Text('Enter QR destination'),
+    content: SizedBox(
+      width: 420,
+      child: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(
+          labelText: 'Website URL',
+          hintText: 'https://merchant.example/pay',
+          errorText: _validationMessage,
+          errorMaxLines: 3,
+        ),
+        onChanged: (_) {
+          if (_validationMessage != null) {
+            setState(() => _validationMessage = null);
+          }
+        },
+        onSubmitted: (_) => _submit(),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(onPressed: _submit, child: const Text('Verify')),
+    ],
+  );
 }
 
 class CameraHelpScreen extends StatelessWidget {

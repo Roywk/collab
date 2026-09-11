@@ -10,11 +10,15 @@ class QuizScreen extends StatefulWidget {
   const QuizScreen({
     required this.repository,
     required this.questions,
+    required this.quizSetId,
+    required this.quizTitle,
     super.key,
   });
 
   final LearningRepository repository;
   final List<QuizQuestion> questions;
+  final String quizSetId;
+  final String quizTitle;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -90,6 +94,7 @@ class _QuizScreenState extends State<QuizScreen> {
       var xpAwarded = 0;
       try {
         xpAwarded = await widget.repository.submitQuizAttempt(
+          quizSetId: widget.quizSetId,
           score: correctAnswers,
           total: questions.length,
           timeTaken: _stopwatch.elapsed,
@@ -175,103 +180,209 @@ class _QuizScreenState extends State<QuizScreen> {
     final progress = (currentQuestionIndex + 1) / questions.length;
 
     return MobileShell(
-      title: 'Fraud Awareness Quiz',
+      title: widget.quizTitle,
       onBack: () => Navigator.pop(context),
       currentNavigationIndex: 5,
-      child: Padding(
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Question ${currentQuestionIndex + 1} of ${questions.length}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              Text(
+                '${(progress * 100).toInt()}% Done',
+                style: const TextStyle(fontSize: 10, color: AppColors.slate),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: AppColors.line,
+            valueColor: const AlwaysStoppedAnimation(AppColors.blue),
+          ),
+          const SizedBox(height: 24),
+          SurfaceCard(
+            child: Column(
               children: [
-                Text(
-                  'Question ${currentQuestionIndex + 1} of ${questions.length}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).toInt()}% Done',
-                  style: const TextStyle(fontSize: 10, color: AppColors.slate),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: AppColors.line,
-              valueColor: const AlwaysStoppedAnimation(AppColors.blue),
-            ),
-            const SizedBox(height: 24),
-            SurfaceCard(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Visual Recognition',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.blue,
-                        ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Visual Recognition',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.blue,
                       ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.timer_outlined,
-                            size: 14,
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: _secondsRemaining < 5
+                              ? AppColors.red
+                              : AppColors.slate,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '0:${_secondsRemaining.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                             color: _secondsRemaining < 5
                                 ? AppColors.red
-                                : AppColors.slate,
+                                : AppColors.navy,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '0:${_secondsRemaining.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: _secondsRemaining < 5
-                                  ? AppColors.red
-                                  : AppColors.navy,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (question.imageUrl != null &&
-                      question.imageUrl!.isNotEmpty) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        question.imageUrl!,
-                        width: double.infinity,
-                        height: 150,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          height: 110,
-                          color: AppColors.canvas,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.broken_image_outlined,
-                            color: AppColors.muted,
-                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (question.imageUrl != null &&
+                    question.imageUrl!.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      question.imageUrl!,
+                      width: double.infinity,
+                      height: 150,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        height: 110,
+                        color: AppColors.canvas,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: AppColors.muted,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                  ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Text(
+                  question.question,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.navy,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ...List.generate(question.options.length, (index) {
+            final isSelected = selectedOptionIndex == index;
+            Color borderColor = isSelected ? AppColors.blue : AppColors.line;
+            Color bgColor = isSelected ? AppColors.blueSoft : Colors.white;
+
+            if (isAnswered) {
+              if (index == question.correctOptionIndex) {
+                borderColor = AppColors.green;
+                bgColor = AppColors.greenSoft;
+              } else if (isSelected) {
+                borderColor = AppColors.red;
+                bgColor = AppColors.redSoft;
+              }
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: isAnswered
+                    ? null
+                    : () => setState(() => selectedOptionIndex = index),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    border: Border.all(
+                      color: borderColor,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          question.options[index],
+                          softWrap: true,
+                          style: TextStyle(
+                            color: isSelected
+                                ? AppColors.navy
+                                : AppColors.slate,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      if (isAnswered && index == question.correctOptionIndex)
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.green,
+                          size: 20,
+                        ),
+                      if (isAnswered &&
+                          isSelected &&
+                          index != question.correctOptionIndex)
+                        const Icon(
+                          Icons.cancel,
+                          color: AppColors.red,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          if (isAnswered)
+            SurfaceCard(
+              color: AppColors.blueSoft.withValues(alpha: 0.3),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    question.question,
+                    selectedOptionIndex == question.correctOptionIndex
+                        ? 'Exactly right — here is why:'
+                        : 'Good practice — this is a safe place to learn. Here is the signal to remember:',
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Correct answer: ${question.options[question.correctOptionIndex]}',
+                    style: const TextStyle(
+                      color: AppColors.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    question.explanation,
+                    style: const TextStyle(
+                      fontSize: 12,
                       color: AppColors.navy,
                       height: 1.4,
                     ),
@@ -279,98 +390,15 @@ class _QuizScreenState extends State<QuizScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            ...List.generate(question.options.length, (index) {
-              final isSelected = selectedOptionIndex == index;
-              Color borderColor = isSelected ? AppColors.blue : AppColors.line;
-              Color bgColor = isSelected ? AppColors.blueSoft : Colors.white;
-
-              if (isAnswered) {
-                if (index == question.correctOptionIndex) {
-                  borderColor = AppColors.green;
-                  bgColor = AppColors.greenSoft;
-                } else if (isSelected) {
-                  borderColor = AppColors.red;
-                  bgColor = AppColors.redSoft;
-                }
-              }
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: isAnswered
-                      ? null
-                      : () => setState(() => selectedOptionIndex = index),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      border: Border.all(
-                        color: borderColor,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            question.options[index],
-                            softWrap: true,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.navy
-                                  : AppColors.slate,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        if (isAnswered && index == question.correctOptionIndex)
-                          const Icon(
-                            Icons.check_circle,
-                            color: AppColors.green,
-                            size: 20,
-                          ),
-                        if (isAnswered &&
-                            isSelected &&
-                            index != question.correctOptionIndex)
-                          const Icon(
-                            Icons.cancel,
-                            color: AppColors.red,
-                            size: 20,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-            const Spacer(),
-            if (isAnswered)
-              SurfaceCard(
-                color: AppColors.blueSoft.withValues(alpha: 0.3),
-                child: Text(
-                  'Explanation: ${question.explanation}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.navy,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            PrimaryActionButton(
-              label: isAnswered ? 'Next Question' : 'Submit Answer',
-              onPressed:
-                  _finishing || (selectedOptionIndex == null && !isAnswered)
-                  ? null
-                  : (isAnswered ? _nextQuestion : _submitAnswer),
-            ),
-          ],
-        ),
+          const SizedBox(height: 16),
+          PrimaryActionButton(
+            label: isAnswered ? 'Next Question' : 'Submit Answer',
+            onPressed:
+                _finishing || (selectedOptionIndex == null && !isAnswered)
+                ? null
+                : (isAnswered ? _nextQuestion : _submitAnswer),
+          ),
+        ],
       ),
     );
   }

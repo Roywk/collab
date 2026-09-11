@@ -9,9 +9,38 @@ import '../../models/scam_map_models.dart';
 import 'admin_shell.dart';
 
 class ManualScamCaseScreen extends StatefulWidget {
-  const ManualScamCaseScreen({required this.repository, super.key});
+  const ManualScamCaseScreen({
+    required this.repository,
+    this.onBack,
+    this.onPublished,
+    this.popOnSuccess = true,
+    this.onSignOut,
+    this.onOpenDashboard,
+    this.onOpenReports,
+    this.onOpenHeatmap,
+    this.onOpenVerifiedMerchants,
+    this.onOpenThreatDatabase,
+    this.onOpenAwarenessCms,
+    this.onOpenSettings,
+    this.onOpenBankHotlines,
+    this.onOpenEmergencyFacilities,
+    super.key,
+  });
 
   final ScamMapRepository repository;
+  final VoidCallback? onBack;
+  final VoidCallback? onPublished;
+  final bool popOnSuccess;
+  final Future<void> Function()? onSignOut;
+  final VoidCallback? onOpenDashboard;
+  final VoidCallback? onOpenReports;
+  final VoidCallback? onOpenHeatmap;
+  final VoidCallback? onOpenVerifiedMerchants;
+  final VoidCallback? onOpenThreatDatabase;
+  final VoidCallback? onOpenAwarenessCms;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenBankHotlines;
+  final VoidCallback? onOpenEmergencyFacilities;
 
   @override
   State<ManualScamCaseScreen> createState() => _ManualScamCaseScreenState();
@@ -116,7 +145,16 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      if (widget.popOnSuccess) {
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Official scam case published successfully.'),
+          ),
+        );
+        widget.onPublished?.call();
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,9 +168,18 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminShell(
-      selectedMenuItem: 'Scam Report Moderation',
-      onBack: () => Navigator.of(context).pop(),
-      onOpenThreatDatabase: () => Navigator.of(context).pop(),
+      selectedMenuItem: 'Publish Official Cases',
+      onBack: widget.onBack ?? () => Navigator.of(context).maybePop(),
+      onSignOut: widget.onSignOut,
+      onOpenDashboard: widget.onOpenDashboard,
+      onOpenReports: widget.onOpenReports,
+      onOpenHeatmap: widget.onOpenHeatmap,
+      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
+      onOpenThreatDatabase: widget.onOpenThreatDatabase,
+      onOpenAwarenessCms: widget.onOpenAwarenessCms,
+      onOpenBankHotlines: widget.onOpenBankHotlines,
+      onOpenEmergencyFacilities: widget.onOpenEmergencyFacilities,
+      headerTitle: 'Publish Official Cases',
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -141,7 +188,7 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Publish Manual Scam Case',
+                'Publish Official Scam Case',
                 style: TextStyle(
                   color: AppColors.navy,
                   fontSize: 22,

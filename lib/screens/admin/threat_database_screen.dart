@@ -6,14 +6,11 @@ import '../../core/app_widgets.dart';
 import '../../data/admin_repository.dart';
 import '../../data/admin_bank_repository.dart';
 import '../../data/admin_facility_repository.dart';
-import '../../data/scam_map_repository.dart';
 import '../../models/module_models.dart';
 import 'admin_shell.dart';
 import 'admin_bank_hotline_screen.dart';
 import 'admin_emergency_facility_screen.dart';
 import 'threat_form_screen.dart';
-import 'manual_scam_case_screen.dart';
-import 'threat_heatmap_screen.dart';
 
 class ThreatDatabaseScreen extends StatefulWidget {
   const ThreatDatabaseScreen({
@@ -92,43 +89,6 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
             : '${record.recordCode} updated successfully.';
 
         loadRecords();
-      });
-    }
-  }
-
-  ScamMapRepository get _scamMapRepository =>
-      ScamMapRepository(client: widget.repository.client);
-
-  Future<void> openThreatHeatmap() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => ThreatHeatmapScreen(
-          repository: _scamMapRepository,
-          onSignOut: widget.onSignOut,
-          onOpenDashboard: widget.onOpenDashboard,
-          onOpenReports: widget.onOpenReports,
-          onOpenHeatmap: widget.onOpenHeatmap,
-          onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
-          onOpenThreatDatabase: widget.onOpenThreatDatabase,
-          onOpenAwarenessCms: widget.onOpenAwarenessCms,
-          onOpenSettings: widget.onOpenSettings,
-          onOpenPublishScamCase: widget.onOpenPublishScamCase,
-        ),
-      ),
-    );
-  }
-
-  Future<void> openManualScamCase() async {
-    final published = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (context) =>
-            ManualScamCaseScreen(repository: _scamMapRepository),
-      ),
-    );
-
-    if (published == true && mounted) {
-      setState(() {
-        successMessage = 'Official scam case published as Verified.';
       });
     }
   }
@@ -264,12 +224,11 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
       headerTitle: 'Threat Database Management',
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
-      onOpenHeatmap: openThreatHeatmap,
+      onOpenHeatmap: widget.onOpenHeatmap,
       onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: () {},
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
-      onOpenSettings: widget.onOpenSettings,
-      onOpenPublishScamCase: openManualScamCase,
+      onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenBankHotlines: openBankHotlineManagement,
       onOpenEmergencyFacilities: openEmergencyFacilityManagement,
       searchController: searchController,
@@ -383,20 +342,6 @@ class _ThreatDatabaseScreenState extends State<ThreatDatabaseScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: widget.onOpenHeatmap ?? openThreatHeatmap,
-                        icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text('Threat Heatmap'),
-                      ),
-                      FilledButton.icon(
-                        onPressed:
-                            widget.onOpenPublishScamCase ?? openManualScamCase,
-                        icon: const Icon(
-                          Icons.add_location_alt_outlined,
-                          size: 18,
-                        ),
-                        label: const Text('Publish Scam Case'),
-                      ),
                       FilledButton.icon(
                         onPressed: openForm,
                         style: FilledButton.styleFrom(

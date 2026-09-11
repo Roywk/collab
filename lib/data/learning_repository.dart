@@ -11,11 +11,22 @@ class LearningRepository {
     final userId = client.auth.currentUser?.id;
     if (userId == null) throw Exception("User not authenticated");
 
-    final profileData = await client
-        .from('profiles')
-        .select('total_xp, available_xp, current_level')
-        .eq('id', userId)
-        .single();
+    Map<String, dynamic> profileData;
+    try {
+      profileData = await client
+          .from('profiles')
+          .select('total_xp, available_xp, current_level')
+          .eq('id', userId)
+          .single();
+    } on PostgrestException catch (error) {
+      if (error.code != '42703' && error.code != 'PGRST204') rethrow;
+      // Keeps learning available while the spendable-XP migration is pending.
+      profileData = await client
+          .from('profiles')
+          .select('total_xp, current_level')
+          .eq('id', userId)
+          .single();
+    }
 
     final vouchersResponse = await client
         .from('user_claimed_vouchers')
@@ -23,21 +34,32 @@ class LearningRepository {
         .eq('user_id', userId)
         .count(CountOption.exact);
 
+    final totalXp = (profileData['total_xp'] as num?)?.toInt() ?? 0;
+    final calculatedLevel = (totalXp ~/ 200).clamp(0, 50);
     return UserLearningProfile(
       userId: userId,
-      totalXp: profileData['total_xp'] ?? 0,
-      currentLevel: profileData['current_level'] ?? 1,
+      totalXp: totalXp,
+      currentLevel: calculatedLevel,
       vouchersCount: vouchersResponse.count,
-      rankTitle: _getRankTitle(profileData['current_level'] ?? 1),
+      rankTitle: _getRankTitle(calculatedLevel),
       availableXp: profileData['available_xp'] ?? profileData['total_xp'] ?? 0,
     );
   }
 
   String _getRankTitle(int level) {
-    if (level >= 10) return 'Scam-Proof Guardian';
-    if (level >= 7) return 'Fraud Fighter';
-    if (level >= 4) return 'Safety Sentinel';
-    return 'Vigilant Voyager';
+    return switch (level) {
+      <= 0 => 'Safety Starter',
+      1 => 'Vigilant Voyager',
+      2 => 'Scam Spotter',
+      3 => 'Street-Smart Explorer',
+      4 => 'Safety Sentinel',
+      5 => 'Fraud Watcher',
+      6 => 'Scam Defender',
+      7 => 'Fraud Fighter',
+      8 => 'Threat Hunter',
+      9 => 'Safety Champion',
+      _ => 'Scam-Proof Guardian · Rank $level',
+    };
   }
 
   Future<List<LearningLesson>> getLessons() async {
@@ -69,6 +91,7 @@ class LearningRepository {
         latitude: item['latitude']?.toDouble(),
         longitude: item['longitude']?.toDouble(),
         isLocationBased: item['is_location_based'] ?? false,
+        hotspotRadiusMeters: item['hotspot_radius_meters'] ?? 250,
         isCompleted: isCompleted,
         xpReward: item['xp_reward'] ?? 20,
         hotspotLabel: item['hotspot_label'],
@@ -76,13 +99,23 @@ class LearningRepository {
     }).toList();
   }
 
-  Future<void> completeLesson(String lessonId) async {
+  Future<int> completeLesson(String lessonId, {int fallbackXp = 0}) async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null) return;
-    await client.rpc(
-      'complete_learning_lesson',
-      params: {'target_lesson_id': lessonId},
-    );
+    if (userId == null) return 0;
+    try {
+      final result = await client.rpc(
+        'complete_learning_lesson_v2',
+        params: {'target_lesson_id': lessonId},
+      );
+      return result is num ? result.toInt() : 0;
+    } on PostgrestException catch (error) {
+      if (error.code != 'PGRST202' && error.code != '42883') rethrow;
+      final result = await client.rpc(
+        'complete_learning_lesson',
+        params: {'target_lesson_id': lessonId},
+      );
+      return result == true ? fallbackXp : 0;
+    }
   }
 
   Future<List<Scenario>> getScenarios() async {
@@ -141,44 +174,84 @@ class LearningRepository {
     }).toList();
   }
 
-  Future<bool> completeScenario(String scenarioId) async {
+  Future<int> completeScenario(String scenarioId, {int fallbackXp = 0}) async {
     final userId = client.auth.currentUser?.id;
-    if (userId == null) return false;
-
-    final result = await client.rpc(
-      'complete_learning_scenario',
-      params: {'target_scenario_id': scenarioId},
-    );
-    return result == true;
+    if (userId == null) return 0;
+    try {
+      final result = await client.rpc(
+        'complete_learning_scenario_v2',
+        params: {'target_scenario_id': scenarioId},
+      );
+      return result is num ? result.toInt() : 0;
+    } on PostgrestException catch (error) {
+      if (error.code != 'PGRST202' && error.code != '42883') rethrow;
+      final result = await client.rpc(
+        'complete_learning_scenario',
+        params: {'target_scenario_id': scenarioId},
+      );
+      return result == true ? fallbackXp : 0;
+    }
   }
 
-  Future<List<QuizQuestion>> getQuizQuestions() async {
+  Future<List<LearningQuiz>> getQuizSets() async {
     final response = await client
-        .from('quiz_questions')
-        .select('*')
+        .from('quiz_sets')
+        .select(
+          '*,quiz_questions(*),quiz_attempts(user_id,passed,completed_at)',
+        )
         .eq('is_active', true)
-        .limit(10);
+        .eq('status', 'published')
+        .order('sort_order');
 
     final List<dynamic> data = response as List<dynamic>;
-
     return data
-        .map(
-          (q) => QuizQuestion(
-            id: q['id'].toString(),
-            referenceCode: q['question_code'] ?? '',
-            question: q['question'],
-            options: List<String>.from(q['options']),
-            correctOptionIndex: q['correct_index'],
-            explanation: q['explanation'],
-            category: q['category'] ?? 'General',
-            imageUrl: q['image_url'],
-            timeLimitSeconds: q['time_limit_seconds'] ?? 15,
-          ),
-        )
+        .map((set) {
+          final questionRows =
+              List<dynamic>.from(set['quiz_questions'] ?? const [])..sort(
+                (a, b) => ((a['question_order'] ?? a['sort_order'] ?? 0) as int)
+                    .compareTo(
+                      (b['question_order'] ?? b['sort_order'] ?? 0) as int,
+                    ),
+              );
+          final attempts = List<dynamic>.from(set['quiz_attempts'] ?? const []);
+          final passedAttempts = attempts
+              .where((attempt) => attempt['passed'] == true)
+              .toList();
+          return LearningQuiz(
+            id: set['id'].toString(),
+            referenceCode: set['quiz_code'] ?? '',
+            title: set['title'] ?? 'Spot the Scam',
+            description: set['description'] ?? '',
+            category: set['category'] ?? 'General',
+            difficulty: set['difficulty'] ?? 'Beginner',
+            xpReward: set['xp_reward'] ?? 80,
+            isCompleted: passedAttempts.isNotEmpty,
+            completedToday: passedAttempts.any(
+              (attempt) => _isMalaysiaToday(attempt['completed_at']),
+            ),
+            questions: questionRows
+                .map(
+                  (question) => QuizQuestion(
+                    id: question['id'].toString(),
+                    referenceCode: question['question_code'] ?? '',
+                    question: question['question'],
+                    options: List<String>.from(question['options']),
+                    correctOptionIndex: question['correct_index'],
+                    explanation: question['explanation'],
+                    category: set['category'] ?? 'General',
+                    imageUrl: question['image_url'],
+                    timeLimitSeconds: question['time_limit_seconds'] ?? 15,
+                  ),
+                )
+                .toList(),
+          );
+        })
+        .where((quiz) => quiz.questions.isNotEmpty)
         .toList();
   }
 
   Future<int> submitQuizAttempt({
+    required String quizSetId,
     required int score,
     required int total,
     required Duration timeTaken,
@@ -187,8 +260,9 @@ class LearningRepository {
     if (userId == null || total == 0) return 0;
 
     final result = await client.rpc(
-      'record_quiz_attempt',
+      'record_quiz_set_attempt',
       params: {
+        'target_quiz_set_id': quizSetId,
         'answer_score': score,
         'question_total': total,
         'elapsed_seconds': timeTaken.inSeconds,
@@ -203,7 +277,7 @@ class LearningRepository {
 
     final response = await client
         .from('reward_vouchers')
-        .select('*, user_claimed_vouchers(user_id, full_promo_code)')
+        .select('*, user_claimed_vouchers(user_id, full_promo_code, used_at)')
         .eq('is_active', true);
 
     final inventoryByVoucher = <String, int>{};
@@ -240,6 +314,7 @@ class LearningRepository {
         requiredXp: requiredXp,
         isUnlocked: profile != null && profile.spendableXp >= requiredXp,
         isClaimed: isClaimed,
+        isUsed: isClaimed && ownClaims.first['used_at'] != null,
         promoCode: fullCode,
         availableCodes: inventoryByVoucher[v['id'].toString()] ?? 0,
       );
@@ -258,11 +333,19 @@ class LearningRepository {
     return result.toString();
   }
 
+  Future<Map<String, dynamic>> useVoucherCode(String code) async {
+    final result = await client.rpc(
+      'use_claimed_voucher',
+      params: {'target_code': code.trim()},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
   Future<LearningOverview> getOverview() async {
     final results = await Future.wait([
       client.from('learning_lessons').select('id').eq('is_active', true),
       client.from('scenarios').select('id').eq('is_active', true),
-      client.from('quiz_questions').select('id').eq('is_active', true),
+      client.from('quiz_sets').select('id').eq('is_active', true),
       client.from('reward_vouchers').select('id').eq('is_active', true),
     ]);
     return LearningOverview(
@@ -271,5 +354,15 @@ class LearningRepository {
       questions: (results[2] as List).length,
       rewards: (results[3] as List).length,
     );
+  }
+
+  bool _isMalaysiaToday(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return false;
+    final malaysiaNow = DateTime.now().toUtc().add(const Duration(hours: 8));
+    final malaysiaValue = parsed.toUtc().add(const Duration(hours: 8));
+    return malaysiaNow.year == malaysiaValue.year &&
+        malaysiaNow.month == malaysiaValue.month &&
+        malaysiaNow.day == malaysiaValue.day;
   }
 }

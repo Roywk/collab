@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
 import '../../../data/learning_repository.dart';
 import '../../../models/learning_models.dart';
+import 'merchant_app_demo_screen.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({required this.repository, super.key});
@@ -112,7 +114,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
   void _showCode(RewardVoucher voucher, String code) {
     showDialog<void>(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         child: Padding(
           padding: const EdgeInsets.all(22),
@@ -163,13 +165,38 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SelectableText(
-                      code,
-                      style: const TextStyle(
-                        color: AppColors.blue,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () async {
+                        await Clipboard.setData(ClipboardData(text: code));
+                        if (!dialogContext.mounted) return;
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('Voucher code copied.')),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                code,
+                                style: const TextStyle(
+                                  color: AppColors.blue,
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.copy_outlined,
+                              color: AppColors.blue,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -181,9 +208,29 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 style: const TextStyle(color: AppColors.slate, fontSize: 9),
               ),
               const SizedBox(height: 18),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MerchantAppDemoScreen(
+                        partnerName: voucher.partnerName,
+                        voucherTitle: voucher.title,
+                        benefit: voucher.discountAmount,
+                        validCode: code,
+                        repository: widget.repository,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('Try in partner demo'),
+              ),
+              const SizedBox(height: 8),
               PrimaryActionButton(
                 label: 'Done',
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
               ),
             ],
           ),
@@ -414,12 +461,16 @@ class _RewardCard extends StatelessWidget {
                 CircleAvatar(
                   backgroundColor: Colors.white,
                   child: Icon(
-                    !voucher.isUnlocked
+                    voucher.isClaimed
+                        ? Icons.local_activity_outlined
+                        : !voucher.isUnlocked
                         ? Icons.lock_outline
                         : voucher.isAvailable
                         ? Icons.local_activity_outlined
                         : Icons.event_busy_outlined,
-                    color: voucher.isUnlocked && voucher.isAvailable
+                    color:
+                        voucher.isClaimed ||
+                            (voucher.isUnlocked && voucher.isAvailable)
                         ? AppColors.blue
                         : AppColors.slate,
                   ),
@@ -467,22 +518,28 @@ class _RewardCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      voucher.isClaimed
-                          ? 'Already redeemed'
-                          : !voucher.isAvailable
-                          ? 'Currently out of stock'
-                          : voucher.isUnlocked
-                          ? 'Ready to redeem'
-                          : 'Need $remaining more XP',
-                      style: TextStyle(
-                        color: voucher.isUnlocked && voucher.isAvailable
-                            ? AppColors.green
-                            : AppColors.slate,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: Text(
+                        voucher.isUsed
+                            ? 'Already used'
+                            : voucher.isClaimed
+                            ? 'Already redeemed'
+                            : !voucher.isAvailable
+                            ? 'Currently out of stock'
+                            : voucher.isUnlocked
+                            ? 'Ready to redeem'
+                            : 'Need $remaining more XP',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: voucher.isUnlocked && voucher.isAvailable
+                              ? AppColors.green
+                              : AppColors.slate,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       'Costs ${voucher.requiredXp} XP',
                       style: const TextStyle(
@@ -505,7 +562,10 @@ class _RewardCard extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed:
-                        !voucher.isUnlocked || !voucher.isAvailable || busy
+                        busy ||
+                            voucher.isUsed ||
+                            (!voucher.isClaimed &&
+                                (!voucher.isUnlocked || !voucher.isAvailable))
                         ? null
                         : onClaim,
                     icon: busy
@@ -524,7 +584,9 @@ class _RewardCard extends StatelessWidget {
                             size: 17,
                           ),
                     label: Text(
-                      voucher.isClaimed
+                      voucher.isUsed
+                          ? 'Already Used'
+                          : voucher.isClaimed
                           ? 'View my code'
                           : !voucher.isAvailable
                           ? 'Out of stock'

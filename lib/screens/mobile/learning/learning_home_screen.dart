@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_theme.dart';
 import '../../../core/app_widgets.dart';
@@ -22,10 +25,53 @@ class LearningHomeScreen extends StatefulWidget {
 class _LearningHomeScreenState extends State<LearningHomeScreen> {
   late Future<_LearningDashboardData> _dashboard;
   final LocationService _locationService = LocationService();
+  RealtimeChannel? _realtimeChannel;
+  Timer? _reloadDebounce;
   @override
   void initState() {
     super.initState();
     _load();
+    _subscribeToChanges();
+  }
+
+  void _subscribeToChanges() {
+    var channel = widget.repository.client.channel(
+      'learning-home-${identityHashCode(this)}',
+    );
+    for (final table in const [
+      'learning_lessons',
+      'quiz_sets',
+      'quiz_questions',
+      'scenarios',
+      'reward_vouchers',
+      'profiles',
+      'user_claimed_vouchers',
+    ]) {
+      channel = channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => _scheduleRealtimeRefresh(),
+      );
+    }
+    _realtimeChannel = channel..subscribe();
+  }
+
+  void _scheduleRealtimeRefresh() {
+    _reloadDebounce?.cancel();
+    _reloadDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) unawaited(_refresh());
+    });
+  }
+
+  @override
+  void dispose() {
+    _reloadDebounce?.cancel();
+    final channel = _realtimeChannel;
+    if (channel != null) {
+      unawaited(widget.repository.client.removeChannel(channel));
+    }
+    super.dispose();
   }
 
   void _load() {
@@ -36,8 +82,56 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(_load);
-    await _dashboard;
+    final nextDashboard = _LearningDashboardData.load(
+      widget.repository,
+      _locationService,
+    );
+    if (mounted) setState(() => _dashboard = nextDashboard);
+    await nextDashboard;
+  }
+
+  Future<void> _openHotspotLesson(LearningLesson lesson) async {
+    var isReview = false;
+    if (lesson.isCompleted) {
+      isReview =
+          await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              icon: const Icon(
+                Icons.task_alt,
+                color: AppColors.green,
+                size: 34,
+              ),
+              title: const Text('Lesson already completed'),
+              content: const Text(
+                'Are you sure you want to study this lesson again? XP can be earned from this lesson only once per day.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Keep as done'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Study again'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!isReview || !mounted) return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonDetailScreen(
+          lesson: lesson,
+          repository: widget.repository,
+          isReview: isReview,
+        ),
+      ),
+    );
+    if (mounted) await _refresh();
   }
 
   @override
@@ -93,15 +187,7 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
                 _HotspotCard(
                   lesson: data.hotspotLesson!,
                   distanceMeters: data.hotspotDistanceMeters,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LessonDetailScreen(
-                        lesson: data.hotspotLesson!,
-                        repository: widget.repository,
-                      ),
-                    ),
-                  ).then((_) => _refresh()),
+                  onTap: () => _openHotspotLesson(data.hotspotLesson!),
                 ),
                 const SizedBox(height: 18),
               ],
@@ -125,7 +211,7 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 11,
                 crossAxisSpacing: 11,
-                childAspectRatio: .91,
+                childAspectRatio: .82,
                 children: [
                   _ModuleCard(
                     icon: Icons.travel_explore_outlined,
@@ -158,7 +244,7 @@ class _LearningHomeScreenState extends State<LearningHomeScreen> {
                   _ModuleCard(
                     icon: Icons.center_focus_strong_outlined,
                     color: const Color(0xFF7C3AED),
-                    eyebrow: '${data.overview.questions} TIMED QUESTIONS',
+                    eyebrow: '${data.overview.questions} TIMED QUIZZES',
                     title: 'Spot the Scam',
                     subtitle: 'Train your eye to catch payment red flags.',
                     onTap: () => Navigator.push(
@@ -317,13 +403,26 @@ class _ProgressHero extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(100),
               ),
-              child: Text(
-                '${profile.totalXp} XP',
-                style: const TextStyle(
-                  color: AppColors.blue,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${profile.spendableXp} XP',
+                    style: const TextStyle(
+                      color: AppColors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Text(
+                    'REWARD BALANCE',
+                    style: TextStyle(
+                      color: AppColors.slate,
+                      fontSize: 6,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -333,7 +432,7 @@ class _ProgressHero extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${profile.xpIntoCurrentLevel} / 200 XP to next level',
+              'Level progress · ${profile.xpIntoCurrentLevel} / 200',
               style: const TextStyle(color: Colors.white70, fontSize: 9),
             ),
             Text(
@@ -613,7 +712,7 @@ class _LearningDashboardData {
             endLatitude: lesson.latitude!,
             endLongitude: lesson.longitude!,
           );
-          if (distance <= 1500 &&
+          if (distance <= lesson.hotspotRadiusMeters &&
               (nearbyDistance == null || distance < nearbyDistance)) {
             nearbyLesson = lesson;
             nearbyDistance = distance;

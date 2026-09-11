@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../data/traveller_notification_repository.dart';
 import '../models/module_models.dart';
+import '../models/traveller_notification.dart';
 import 'app_theme.dart';
 
 class MobileShell extends StatelessWidget {
@@ -102,38 +104,7 @@ class MobileShell extends StatelessWidget {
         ),
         actions: [
           GpsStatusBadge(isActive: gpsActive, label: statusLabel),
-          PopupMenuButton<String>(
-            tooltip: 'Notifications',
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              size: 21,
-              color: AppColors.navy,
-            ),
-            onSelected: (value) {
-              if (value == 'admin') {
-                onAdmin?.call();
-              }
-            },
-            itemBuilder: (context) {
-              return [
-                const PopupMenuItem(
-                  value: 'notification',
-                  child: Text('No new notifications'),
-                ),
-                if (onAdmin != null)
-                  const PopupMenuItem(
-                    value: 'admin',
-                    child: Row(
-                      children: [
-                        Icon(Icons.admin_panel_settings_outlined, size: 19),
-                        SizedBox(width: 10),
-                        Text('Open admin database'),
-                      ],
-                    ),
-                  ),
-              ];
-            },
-          ),
+          _TravellerNotificationsButton(onAdmin: onAdmin),
           const SizedBox(width: 4),
         ],
       ),
@@ -156,6 +127,179 @@ class MobileShell extends StatelessWidget {
               emergencyMode: emergencyNavigation,
             )
           : null,
+    );
+  }
+}
+
+class _TravellerNotificationsButton extends StatefulWidget {
+  const _TravellerNotificationsButton({this.onAdmin});
+
+  final VoidCallback? onAdmin;
+
+  @override
+  State<_TravellerNotificationsButton> createState() =>
+      _TravellerNotificationsButtonState();
+}
+
+class _TravellerNotificationsButtonState
+    extends State<_TravellerNotificationsButton> {
+  final TravellerNotificationRepository _repository =
+      TravellerNotificationRepository();
+  late Future<List<TravellerNotification>> _notificationsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsFuture = _repository.getActiveNotifications();
+  }
+
+  Future<void> _openNotifications() async {
+    final notifications = await _repository.getActiveNotifications();
+    if (!mounted) return;
+    setState(() {
+      _notificationsFuture = Future.value(notifications);
+    });
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 4, 20, 14),
+                child: Text(
+                  'Safety Notifications',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              if (notifications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(28),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          color: AppColors.muted,
+                          size: 36,
+                        ),
+                        SizedBox(height: 10),
+                        Text('No safety notifications published yet.'),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: notifications.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      return _TravellerNotificationTile(
+                        notification: notifications[index],
+                      );
+                    },
+                  ),
+                ),
+              if (widget.onAdmin != null) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings_outlined),
+                  title: const Text('Open admin database'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    widget.onAdmin?.call();
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<TravellerNotification>>(
+      future: _notificationsFuture,
+      builder: (context, snapshot) {
+        final count = snapshot.data?.length ?? 0;
+        return IconButton(
+          tooltip: 'Safety notifications',
+          onPressed: _openNotifications,
+          icon: Badge(
+            isLabelVisible: count > 0,
+            label: Text(count > 99 ? '99+' : '$count'),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              size: 21,
+              color: AppColors.navy,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TravellerNotificationTile extends StatelessWidget {
+  const _TravellerNotificationTile({required this.notification});
+
+  final TravellerNotification notification;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCritical = notification.severity == 'Critical';
+    final isWarning = notification.severity == 'Warning';
+    final color = isCritical
+        ? AppColors.red
+        : isWarning
+        ? AppColors.amber
+        : AppColors.blue;
+    final date = notification.publishedAt.toLocal();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: CircleAvatar(
+          backgroundColor: color.withValues(alpha: 0.12),
+          child: Icon(Icons.campaign_outlined, color: color, size: 21),
+        ),
+        title: Text(
+          notification.title,
+          style: const TextStyle(
+            color: AppColors.navy,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Text(
+            '${notification.message}\n'
+            '${notification.severity} • '
+            '${date.day}/${date.month}/${date.year} '
+            '${date.hour.toString().padLeft(2, '0')}:'
+            '${date.minute.toString().padLeft(2, '0')}',
+          ),
+        ),
+        isThreeLine: true,
+      ),
     );
   }
 }
@@ -306,16 +450,20 @@ class VisitBottomNavigation extends StatelessWidget {
                               : AppColors.slate,
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          items[index].$2,
-                          style: TextStyle(
-                            color: index == currentIndex
-                                ? AppColors.blue
-                                : AppColors.slate,
-                            fontSize: 9,
-                            fontWeight: index == currentIndex
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            items[index].$2,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: index == currentIndex
+                                  ? AppColors.blue
+                                  : AppColors.slate,
+                              fontSize: 9,
+                              fontWeight: index == currentIndex
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
