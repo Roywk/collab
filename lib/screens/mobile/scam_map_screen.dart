@@ -462,6 +462,11 @@ class _ScamMapScreenState extends State<ScamMapScreen> {
                                 initialZoom: 12,
                                 minZoom: 11,
                                 maxZoom: 19,
+                                interactionOptions: const InteractionOptions(
+                                  flags:
+                                      InteractiveFlag.all &
+                                      ~InteractiveFlag.rotate,
+                                ),
                                 cameraConstraint: CameraConstraint.contain(
                                   bounds: _kualaLumpurBounds,
                                 ),
