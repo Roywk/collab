@@ -59,6 +59,28 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
     });
   }
 
+  /// Robust check to see if a location string is essentially empty or placeholder
+  bool _isLocationUnknown(String? loc) {
+    if (loc == null) return true;
+    final s = loc.toLowerCase().trim();
+    if (s.isEmpty) return true;
+    
+    // Catch common placeholder strings
+    final placeholders = [
+      'unknown', 'unknow', 'n/a', 'null', 'undefined', 'none', 
+      'unknown location', 'unknow location', 'location unknown'
+    ];
+    
+    return placeholders.any((p) => s.contains(p));
+  }
+
+  String _getLocationDisplay(ScamReport r) {
+    if (!_isLocationUnknown(r.locationName)) {
+      return r.locationName!;
+    }
+    return '${r.latitude.toStringAsFixed(5)}, ${r.longitude.toStringAsFixed(5)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminShell(
@@ -96,12 +118,15 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
             final matchesCategory =
                 _categoryFilter == 'All Categories' ||
                 r.category == _categoryFilter;
+            
+            final locationText = _getLocationDisplay(r).toLowerCase();
             final matchesSearch =
                 _searchQuery.isEmpty ||
                 (r.id?.toLowerCase().contains(_searchQuery) ?? false) ||
                 r.title.toLowerCase().contains(_searchQuery) ||
                 r.category.toLowerCase().contains(_searchQuery) ||
-                (r.locationName?.toLowerCase().contains(_searchQuery) ?? false);
+                locationText.contains(_searchQuery);
+            
             final matchesRisk = !_highRiskOnly || (r.amountLost ?? 0) > 200;
 
             return matchesStatus &&
@@ -383,7 +408,21 @@ class _ReportsModerationScreenState extends State<ReportsModerationScreen> {
                   onTap: () => _openDetail(r),
                 ),
                 DataCell(Text(r.category)),
-                DataCell(Text(r.locationName ?? 'Unknown')),
+                DataCell(
+                  SizedBox(
+                    width: 180,
+                    child: Text(
+                      _getLocationDisplay(r),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _isLocationUnknown(r.locationName) ? AppColors.slate : AppColors.navy,
+                        fontStyle: _isLocationUnknown(r.locationName) ? FontStyle.italic : FontStyle.normal,
+                      ),
+                    ),
+                  ),
+                ),
                 DataCell(Text(DateFormat('MMM dd, yyyy').format(r.createdAt))),
                 DataCell(_buildTableStatusBadge(r.verificationStatus)),
                 DataCell(

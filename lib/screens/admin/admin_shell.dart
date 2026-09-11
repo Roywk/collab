@@ -362,11 +362,8 @@ class AdminSidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(7),
                       child: ListTile(
                         onTap: () {
-                          // Close drawer if it's open (Mobile layout)
-                          if (Scaffold.maybeOf(context)?.hasDrawer ?? false) {
-                            if (Scaffold.of(context).isDrawerOpen) {
-                              Navigator.of(context).pop();
-                            }
+                          if (Scaffold.of(context).isDrawerOpen) {
+                            Navigator.of(context).pop();
                           }
 
                           switch (item.$2) {

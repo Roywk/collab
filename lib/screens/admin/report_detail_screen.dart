@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/app_theme.dart';
 import '../../data/admin_repository.dart';
 import '../../models/report_models.dart';
+import '../../services/address_lookup_service.dart';
 import 'admin_shell.dart';
 
 class ReportDetailScreen extends StatefulWidget {
@@ -43,18 +44,49 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   late String _currentStatus;
   final TextEditingController _notesController = TextEditingController();
   bool _isSaving = false;
+  String? _resolvedAddress;
+
+  bool _isLocationUnknown(String? loc) {
+    if (loc == null || loc.trim().isEmpty) return true;
+    final lower = loc.toLowerCase().trim();
+    return lower.contains('unknown') || 
+           lower.contains('unknow') || 
+           lower == 'n/a' || 
+           lower == 'null';
+  }
 
   @override
   void initState() {
     super.initState();
     _currentStatus = widget.report.verificationStatus;
     _notesController.text = widget.report.adminNotes ?? '';
+    
+    if (_isLocationUnknown(widget.report.locationName)) {
+      _resolveLocation();
+    }
   }
 
   @override
   void dispose() {
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _resolveLocation() async {
+    final service = AddressLookupService();
+    try {
+      final address = await service.addressFromCoordinates(
+        latitude: widget.report.latitude,
+        longitude: widget.report.longitude,
+      );
+      if (mounted && address != null) {
+        setState(() {
+          _resolvedAddress = address;
+        });
+      }
+    } finally {
+      service.dispose();
+    }
   }
 
   Future<void> _updateStatus(String newStatus) async {
@@ -173,6 +205,11 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 
   Widget _buildReportDetails() {
+    final bool isLocUnknown = _isLocationUnknown(widget.report.locationName);
+    final String locationDisplay = !isLocUnknown 
+        ? widget.report.locationName! 
+        : _resolvedAddress ?? 'Resolving address...';
+
     return Column(
       children: [
         Container(
@@ -185,37 +222,34 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('INCIDENT INFORMATION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
+              const Text('INCIDENT SUMMARY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
               const SizedBox(height: 16),
-              Text(widget.report.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.navy)),
-              const SizedBox(height: 8),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: AppColors.blueSoft.withOpacity(0.5), borderRadius: BorderRadius.circular(4)),
-                    child: Text(widget.report.category, style: const TextStyle(color: AppColors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                  if (widget.report.amountLost != null) ...[
-                    const SizedBox(width: 12),
-                    Text('RM ${widget.report.amountLost!.toStringAsFixed(2)} lost', style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.bold)),
-                  ],
+                  Text(widget.report.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.navy)),
+                  if (widget.report.amountLost != null)
+                    Text('RM ${widget.report.amountLost!.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.red, fontSize: 20, fontWeight: FontWeight.w800)),
                 ],
               ),
-              const SizedBox(height: 24),
-              const Text('DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
+              const SizedBox(height: 32),
+              Wrap(
+                spacing: 40,
+                runSpacing: 24,
+                children: [
+                  _buildInfoColumn('REPORT ID', '#${widget.report.id?.toUpperCase() ?? "N/A"}'),
+                  _buildInfoColumn('CATEGORY', widget.report.category.toUpperCase()),
+                  _buildInfoColumn('REPORTER', widget.report.isAnonymous ? 'Anonymous' : 'Registered User'),
+                  _buildInfoColumn('LOCATION', locationDisplay),
+                  _buildInfoColumn('COORDINATES', '${widget.report.latitude.toStringAsFixed(5)}, ${widget.report.longitude.toStringAsFixed(5)}'),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const Text('DETAILED DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
               const SizedBox(height: 8),
               Text(widget.report.description, style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF4A4E69))),
-              const SizedBox(height: 24),
-              const Text('LOCATION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: AppColors.red),
-                  const SizedBox(width: 4),
-                  Text(widget.report.locationName ?? 'Unknown location', style: const TextStyle(fontWeight: FontWeight.w600)),
-                ],
-              ),
+              const SizedBox(height: 32),
+              const Text('MAP VIEW', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
               const SizedBox(height: 16),
               AspectRatio(
                 aspectRatio: 2,
@@ -244,6 +278,17 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     );
   }
 
+  Widget _buildInfoColumn(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(color: AppColors.navy, fontSize: 13, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+
   Widget _buildEvidenceCard() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -255,7 +300,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('EVIDENCE (${widget.report.evidenceUrls.length} FILES)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
+          const Text('EVIDENCE MEDIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted)),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
