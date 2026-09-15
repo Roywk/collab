@@ -65,85 +65,104 @@ class _ScenarioGameplayScreenState extends State<ScenarioGameplayScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Icon(Icons.check_circle, color: AppColors.green, size: 64),
-            const SizedBox(height: 16),
-            const Text(
-              'Scenario Complete!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.greenSoft,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                earnedXp > 0
-                    ? '+$earnedXp XP EARNED!'
-                    : 'PRACTICE COMPLETE · TODAY’S XP ALREADY EARNED',
-                style: const TextStyle(
+      builder: (context) => SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle,
                   color: AppColors.green,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
+                  size: 64,
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SurfaceCard(
-              color: AppColors.blueSoft.withValues(alpha: 0.3),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'EXPLANATION',
-                    style: TextStyle(
-                      fontSize: 10,
+                const SizedBox(height: 16),
+                const Text(
+                  'Scenario Complete!',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenSoft,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    earnedXp > 0
+                        ? '+$earnedXp XP EARNED!'
+                        : 'PRACTICE COMPLETE · TODAY’S XP ALREADY EARNED',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.green,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.blue,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Correct answer: ${selectedOption?.text}\n\n${selectedOption?.feedback ?? widget.scenario.description}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.navy),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            PrimaryActionButton(
-              label: 'Back to Scenarios',
-              onPressed: () {
-                Navigator.pop(context); // Close modal
-                Navigator.pop(context); // Back to selection
-              },
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Review my final choice',
-                style: TextStyle(
-                  color: AppColors.blue,
-                  fontWeight: FontWeight.w700,
                 ),
-              ),
+                const SizedBox(height: 24),
+                SurfaceCard(
+                  color: AppColors.blueSoft.withValues(alpha: 0.3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'EXPLANATION',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Correct answer: ${selectedOption?.text}\n\n${selectedOption?.feedback ?? widget.scenario.description}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                PrimaryActionButton(
+                  label: 'Back to Scenarios',
+                  onPressed: () {
+                    Navigator.pop(context); // Close modal
+                    Navigator.pop(context); // Back to selection
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Review my final choice',
+                    style: TextStyle(
+                      color: AppColors.blue,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
