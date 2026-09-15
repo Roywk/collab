@@ -15,7 +15,6 @@ class ReportDetailScreen extends StatefulWidget {
     this.onOpenDashboard,
     this.onOpenReports,
     this.onOpenHeatmap,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenPublishScamCase,
@@ -28,7 +27,6 @@ class ReportDetailScreen extends StatefulWidget {
   final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenPublishScamCase;
@@ -151,7 +149,6 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
       onOpenHeatmap: widget.onOpenHeatmap,
-      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,

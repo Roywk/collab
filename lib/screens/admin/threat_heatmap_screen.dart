@@ -19,7 +19,6 @@ class ThreatHeatmapScreen extends StatefulWidget {
     this.onOpenReports,
     this.onOpenThreatDatabase,
     this.onOpenDashboard,
-    this.onOpenVerifiedMerchants,
     this.onOpenAwarenessCms,
     this.onOpenSettings,
     this.onOpenPublishScamCase,
@@ -32,7 +31,6 @@ class ThreatHeatmapScreen extends StatefulWidget {
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenDashboard;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenPublishScamCase;
@@ -116,7 +114,6 @@ class _ThreatHeatmapScreenState extends State<ThreatHeatmapScreen> {
       onOpenReports: widget.onOpenReports,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenDashboard: widget.onOpenDashboard,
-      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
       onOpenHeatmap: widget.onOpenHeatmap,

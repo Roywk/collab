@@ -13,7 +13,6 @@ import 'manual_scam_case_screen.dart';
 import 'reports_moderation_screen.dart';
 import 'threat_database_screen.dart';
 import 'threat_heatmap_screen.dart';
-import 'verified_merchants_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({
@@ -54,7 +53,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     void openDashboard() => _onSectionChanged('Dashboard Overview');
     void openReports() => _onSectionChanged('Reports Moderation');
     void openHeatmap() => _onSectionChanged('Geospatial Heatmap');
-    void openMerchants() => _onSectionChanged('Verified Merchants');
     void openThreatDatabase() => _onSectionChanged('Threat Database');
     void openAwareness() => _onSectionChanged('Awareness CMS');
     void openBanks() => _onSectionChanged('Bank Hotline Mgmt');
@@ -66,7 +64,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       dashboard: openDashboard,
       reports: openReports,
       heatmap: openHeatmap,
-      merchants: openMerchants,
       threatDatabase: openThreatDatabase,
       awareness: openAwareness,
       publish: openPublish,
@@ -84,7 +81,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenBankHotlines: openBanks,
@@ -97,7 +93,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenPublishScamCase: commonCallbacks.publish,
@@ -109,19 +104,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
-          onOpenThreatDatabase: commonCallbacks.threatDatabase,
-          onOpenAwarenessCms: commonCallbacks.awareness,
-          onOpenPublishScamCase: commonCallbacks.publish,
-        );
-      case 'Verified Merchants':
-        screen = VerifiedMerchantsScreen(
-          repository: widget.repository,
-          onSignOut: widget.onSignOut,
-          onOpenDashboard: commonCallbacks.dashboard,
-          onOpenReports: commonCallbacks.reports,
-          onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenPublishScamCase: commonCallbacks.publish,
@@ -133,7 +115,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenPublishScamCase: commonCallbacks.publish,
@@ -145,7 +126,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenPublishScamCase: commonCallbacks.publish,
@@ -175,7 +155,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onOpenDashboard: commonCallbacks.dashboard,
           onOpenReports: commonCallbacks.reports,
           onOpenHeatmap: commonCallbacks.heatmap,
-          onOpenVerifiedMerchants: commonCallbacks.merchants,
           onOpenThreatDatabase: commonCallbacks.threatDatabase,
           onOpenAwarenessCms: commonCallbacks.awareness,
           onOpenPublishScamCase: commonCallbacks.publish,
@@ -191,7 +170,6 @@ class _AdminCallbacks {
     required this.dashboard,
     required this.reports,
     required this.heatmap,
-    required this.merchants,
     required this.threatDatabase,
     required this.awareness,
     required this.publish,
@@ -200,7 +178,6 @@ class _AdminCallbacks {
   final VoidCallback dashboard;
   final VoidCallback reports;
   final VoidCallback heatmap;
-  final VoidCallback merchants;
   final VoidCallback threatDatabase;
   final VoidCallback awareness;
   final VoidCallback publish;

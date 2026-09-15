@@ -18,7 +18,6 @@ class ManualScamCaseScreen extends StatefulWidget {
     this.onOpenDashboard,
     this.onOpenReports,
     this.onOpenHeatmap,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenSettings,
@@ -35,7 +34,6 @@ class ManualScamCaseScreen extends StatefulWidget {
   final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenSettings;
@@ -174,7 +172,6 @@ class _ManualScamCaseScreenState extends State<ManualScamCaseScreen> {
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
       onOpenHeatmap: widget.onOpenHeatmap,
-      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
       onOpenBankHotlines: widget.onOpenBankHotlines,

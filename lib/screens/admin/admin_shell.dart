@@ -33,7 +33,6 @@ class AdminShell extends StatelessWidget {
     this.onOpenReports,
     this.onOpenHeatmap,
     this.onOpenPublishScamCase,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenBankHotlines,
@@ -54,7 +53,6 @@ class AdminShell extends StatelessWidget {
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onOpenPublishScamCase;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenBankHotlines;
@@ -122,7 +120,6 @@ class AdminShell extends StatelessWidget {
                         onOpenReports: onOpenReports,
                         onOpenHeatmap: onOpenHeatmap,
                         onOpenPublishScamCase: onOpenPublishScamCase,
-                        onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                         onOpenThreatDatabase: onOpenThreatDatabase,
                         onOpenAwarenessCms: onOpenAwarenessCms,
                         onOpenBankHotlines: onOpenBankHotlines,
@@ -148,7 +145,6 @@ class AdminShell extends StatelessWidget {
                   onOpenReports: onOpenReports,
                   onOpenHeatmap: onOpenHeatmap,
                   onOpenPublishScamCase: onOpenPublishScamCase,
-                  onOpenVerifiedMerchants: onOpenVerifiedMerchants,
                   onOpenThreatDatabase: onOpenThreatDatabase,
                   onOpenAwarenessCms: onOpenAwarenessCms,
                   onOpenBankHotlines: onOpenBankHotlines,
@@ -248,7 +244,6 @@ class AdminSidebar extends StatelessWidget {
     this.onOpenReports,
     this.onOpenHeatmap,
     this.onOpenPublishScamCase,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenBankHotlines,
@@ -262,7 +257,6 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
   final VoidCallback? onOpenPublishScamCase;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenBankHotlines;
@@ -289,7 +283,6 @@ class AdminSidebar extends StatelessWidget {
       (Icons.shield_outlined, 'Scam Moderation'),
       (Icons.shield_outlined, 'Threat Database'),
       (Icons.map_outlined, 'Geospatial Heatmap'),
-      (Icons.verified_outlined, 'Verified Merchants'),
       (Icons.phone_outlined, 'Bank Hotline Mgmt'),
       (Icons.location_on_outlined, 'Emergency Facilities'),
       (Icons.menu_book_outlined, 'Awareness CMS'),
@@ -377,9 +370,6 @@ class AdminSidebar extends StatelessWidget {
                               break;
                             case 'Geospatial Heatmap':
                               openSection(onOpenHeatmap, item.$2);
-                              break;
-                            case 'Verified Merchants':
-                              openSection(onOpenVerifiedMerchants, item.$2);
                               break;
                             case 'Bank Hotline Mgmt':
                               openSection(onOpenBankHotlines, item.$2);

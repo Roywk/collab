@@ -327,7 +327,6 @@ class _ThreatFormScreenState extends State<ThreatFormScreen> {
                           items:
                               const [
                                 'Select Category',
-                                'Verified Merchant',
                                 'Currency Exchange Scam',
                                 'QR Code Fraud',
                                 'Taxi Scam',

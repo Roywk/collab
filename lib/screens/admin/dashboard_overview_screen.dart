@@ -13,7 +13,6 @@ class DashboardOverviewScreen extends StatefulWidget {
     this.onOpenDashboard,
     this.onOpenReports,
     this.onOpenHeatmap,
-    this.onOpenVerifiedMerchants,
     this.onOpenThreatDatabase,
     this.onOpenAwarenessCms,
     this.onOpenSettings,
@@ -26,7 +25,6 @@ class DashboardOverviewScreen extends StatefulWidget {
   final VoidCallback? onOpenDashboard;
   final VoidCallback? onOpenReports;
   final VoidCallback? onOpenHeatmap;
-  final VoidCallback? onOpenVerifiedMerchants;
   final VoidCallback? onOpenThreatDatabase;
   final VoidCallback? onOpenAwarenessCms;
   final VoidCallback? onOpenSettings;
@@ -366,7 +364,6 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
       onOpenDashboard: widget.onOpenDashboard,
       onOpenReports: widget.onOpenReports,
       onOpenHeatmap: widget.onOpenHeatmap,
-      onOpenVerifiedMerchants: widget.onOpenVerifiedMerchants,
       onOpenThreatDatabase: widget.onOpenThreatDatabase,
       onOpenAwarenessCms: widget.onOpenAwarenessCms,
       onOpenPublishScamCase: widget.onOpenPublishScamCase,
